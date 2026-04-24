@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -20,7 +21,9 @@ const nextConfig: NextConfig = {
   transpilePackages: ['motion'],
   // Next.js 16 uses Turbopack by default. Keep this explicit so the app
   // doesn't error when no Turbopack customization is needed.
-  turbopack: {},
+  turbopack: {
+    root: path.join(__dirname),
+  },
 };
 
 export default nextConfig;
