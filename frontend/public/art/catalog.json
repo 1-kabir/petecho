@@ -1,0 +1,112 @@
+{
+  "petTypes": [
+    {
+      "key": "dog",
+      "label": "Dog",
+      "sprites": [
+        {
+          "key": "akita",
+          "label": "Akita",
+          "idle": "/art/dog1/akita_idle_8fps.gif",
+          "walk": "/art/dog1/akita_walk_8fps.gif"
+        },
+        {
+          "key": "black_dog",
+          "label": "Black Dog",
+          "idle": "/art/dog2/black_idle_8fps.gif",
+          "walk": "/art/dog2/black_walk_8fps.gif"
+        }
+      ]
+    },
+    {
+      "key": "chicken",
+      "label": "Chicken",
+      "sprites": [
+        {
+          "key": "brown_chicken",
+          "label": "Brown Chicken",
+          "idle": "/art/brown_chicken/brown_idle_8fps.gif",
+          "walk": "/art/brown_chicken/brown_walk_8fps.gif"
+        },
+        {
+          "key": "white_chicken",
+          "label": "White Chicken",
+          "idle": "/art/white_chicken/white_idle_8fps.gif",
+          "walk": "/art/white_chicken/white_walk_8fps.gif"
+        }
+      ]
+    },
+    {
+      "key": "crab",
+      "label": "Crab",
+      "sprites": [
+        {
+          "key": "red_crab",
+          "label": "Red Crab",
+          "idle": "/art/crab/red_idle_8fps.gif",
+          "walk": "/art/crab/red_walk_8fps.gif"
+        }
+      ]
+    },
+    {
+      "key": "dino",
+      "label": "Dino",
+      "sprites": [
+        {
+          "key": "green_dino",
+          "label": "Green Dino",
+          "idle": "/art/dino/green_idle_8fps.gif",
+          "walk": "/art/dino/green_walk_8fps.gif"
+        }
+      ]
+    },
+    {
+      "key": "horse",
+      "label": "Horse",
+      "sprites": [
+        {
+          "key": "brown_horse",
+          "label": "Brown Horse",
+          "idle": "/art/horse/brown_idle_8fps.gif",
+          "walk": "/art/horse/brown_walk_8fps.gif"
+        }
+      ]
+    },
+    {
+      "key": "rat",
+      "label": "Rat",
+      "sprites": [
+        {
+          "key": "gray_rat",
+          "label": "Gray Rat",
+          "idle": "/art/rat/gray_idle_8fps.gif",
+          "walk": "/art/rat/gray_walk_8fps.gif"
+        }
+      ]
+    },
+    {
+      "key": "snail",
+      "label": "Snail",
+      "sprites": [
+        {
+          "key": "brown_snail",
+          "label": "Brown Snail",
+          "idle": "/art/snail/brown_idle_8fps.gif",
+          "walk": "/art/snail/brown_walk_8fps.gif"
+        }
+      ]
+    },
+    {
+      "key": "snake",
+      "label": "Snake",
+      "sprites": [
+        {
+          "key": "green_snake",
+          "label": "Green Snake",
+          "idle": "/art/snake/green_idle_8fps.gif",
+          "walk": "/art/snake/green_walk_8fps.gif"
+        }
+      ]
+    }
+  ]
+}
