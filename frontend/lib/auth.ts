@@ -11,6 +11,9 @@ export interface PetRecord {
   typeKey: string;
   spriteKey: string;
   customSpriteUrl?: string | null;
+  customRunUrl?: string | null;
+  customBallUrl?: string | null;
+  customPlayUrl?: string | null;
   shareToken: string;
   description: string;
   birthday: string;

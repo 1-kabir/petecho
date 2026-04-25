@@ -96,6 +96,9 @@ db.serialize(() => {
     db.run('ALTER TABLE pets ADD COLUMN is_real INTEGER DEFAULT 0', () => {});
     db.run('ALTER TABLE pets ADD COLUMN is_alive INTEGER DEFAULT 1', () => {});
     db.run('ALTER TABLE pets ADD COLUMN checkin_times TEXT', () => {});
+    db.run('ALTER TABLE pets ADD COLUMN custom_run_url TEXT', () => {});
+    db.run('ALTER TABLE pets ADD COLUMN custom_ball_url TEXT', () => {});
+    db.run('ALTER TABLE pets ADD COLUMN custom_play_url TEXT', () => {});
   });
 
   // Chats Table
@@ -108,6 +111,8 @@ db.serialize(() => {
       text TEXT NOT NULL,
       mime_type TEXT,
       file_url TEXT,
+      gemini_file_uri TEXT,
+      gemini_file_name TEXT,
       reply_to_id INTEGER,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -117,6 +122,8 @@ db.serialize(() => {
   `, () => {
     db.run('ALTER TABLE chats ADD COLUMN mime_type TEXT', () => {});
     db.run('ALTER TABLE chats ADD COLUMN file_url TEXT', () => {});
+    db.run('ALTER TABLE chats ADD COLUMN gemini_file_uri TEXT', () => {});
+    db.run('ALTER TABLE chats ADD COLUMN gemini_file_name TEXT', () => {});
     db.run('ALTER TABLE chats ADD COLUMN reply_to_id INTEGER', () => {});
   });
 

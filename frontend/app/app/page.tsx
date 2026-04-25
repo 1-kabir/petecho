@@ -33,8 +33,10 @@ import {
   Share2,
   Reply,
   Download,
+  Volume2,
 } from 'lucide-react';
 import { PetSprite } from '@/components/pet-sprite';
+import { PetCustomizer } from '@/components/pet-customizer';
 import {
   API_URL,
   clearAuthCookie,
@@ -47,6 +49,8 @@ import {
 } from '@/lib/auth';
 import { getPetTypeByKey, getSpriteByKeys, petCatalog } from '@/lib/pet-catalog';
 import { getRandomPetActionMessage, type PetActionType } from '@/lib/pet-actions';
+import { useToast } from '@/lib/toast-context';
+import { cn } from '@/lib/utils';
 
 const defaultPetType = petCatalog.petTypes[0];
 
@@ -335,42 +339,25 @@ function CreatePetModal({
   onCreated: (pet: PetRecord) => void;
 }) {
   const [name, setName] = useState('');
-  const [gender, setGender] = useState('unknown');
-  const [typeKey, setTypeKey] = useState(defaultPetType.key);
-  const [spriteKey, setSpriteKey] = useState(defaultPetType.sprites[0].key);
+  const [gender, setGender] = useState('male');
   const [description, setDescription] = useState('');
   const [birthday, setBirthday] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [isReal, setIsReal] = useState(false);
   const [isAlive, setIsAlive] = useState(true);
-  const [customSpriteFile, setCustomSpriteFile] = useState<File | null>(null);
-  const [customSpritePreview, setCustomSpritePreview] = useState<string | null>(null);
-  const spriteFileInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (customSpriteFile) {
-      const url = URL.createObjectURL(customSpriteFile);
-      setCustomSpritePreview(url);
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setCustomSpritePreview(null);
-    }
-  }, [customSpriteFile]);
-
-  const selectedPetType = useMemo(
-    () => getPetTypeByKey(typeKey) ?? defaultPetType,
-    [typeKey]
-  );
-  const selectedSprite =
-    selectedPetType.sprites.find((s) => s.key === spriteKey) ??
-    selectedPetType.sprites[0];
-
-  useEffect(() => {
-    if (!selectedPetType.sprites.some((s) => s.key === spriteKey)) {
-      setSpriteKey(selectedPetType.sprites[0].key);
-    }
-  }, [selectedPetType, spriteKey]);
+  const [customizerData, setCustomizerData] = useState<{
+    typeKey: string;
+    spriteKey: string;
+    customFiles: { idle?: File | null; run?: File | null; ball?: File | null; play?: File | null; };
+    useCustom: boolean;
+  }>({
+    typeKey: petCatalog.petTypes[0].key,
+    spriteKey: petCatalog.petTypes[0].sprites[0].key,
+    customFiles: {},
+    useCustom: false,
+  });
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -381,15 +368,17 @@ function CreatePetModal({
       const formData = new FormData();
       formData.append('name', name);
       formData.append('gender', gender);
-      formData.append('typeKey', typeKey);
-      formData.append('spriteKey', spriteKey);
+      formData.append('typeKey', customizerData.typeKey);
+      formData.append('spriteKey', customizerData.spriteKey);
       formData.append('description', description);
       formData.append('birthday', birthday);
       formData.append('isReal', isReal ? 'true' : 'false');
       formData.append('isAlive', isAlive ? 'true' : 'false');
-      if (customSpriteFile) {
-        formData.append('sprite', customSpriteFile);
-      }
+
+      if (customizerData.customFiles.idle) formData.append('sprite', customizerData.customFiles.idle);
+      if (customizerData.customFiles.run) formData.append('run', customizerData.customFiles.run);
+      if (customizerData.customFiles.ball) formData.append('ball', customizerData.customFiles.ball);
+      if (customizerData.customFiles.play) formData.append('play', customizerData.customFiles.play);
 
       const res = await fetch(`${API_URL}/pets`, {
         method: 'POST',
@@ -422,13 +411,13 @@ function CreatePetModal({
         onClick={onClose}
       >
         <motion.div
-          className="w-full max-w-2xl overflow-hidden rounded-[2rem] border-2 border-black bg-white shadow-[12px_12px_0px_rgba(0,0,0,1)]"
+          className="relative w-full max-w-4xl overflow-hidden rounded-[2.5rem] border-2 border-black bg-white shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between border-b-2 border-black px-6 py-5">
+          <div className="flex items-center justify-between border-b-2 border-black px-6 py-5 bg-[#f5f0e8]">
             <div className="flex items-center gap-2">
               <Plus className="h-5 w-5" />
               <span className="font-heading text-lg font-bold">New Pet</span>
@@ -441,50 +430,48 @@ function CreatePetModal({
             </button>
           </div>
 
-          <form className="max-h-[70vh] overflow-y-auto p-6" onSubmit={handleSubmit}>
-            <div className="space-y-6">
-              <div className="space-y-4 rounded-3xl border-2 border-black/5 bg-black/[0.02] p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-bold">Real-life Pet?</p>
-                    <p className="text-[10px] text-black/40 font-body uppercase tracking-wider">Is this pet based on a real companion?</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsReal(!isReal)}
-                    className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${isReal ? 'bg-black' : 'bg-black/10'}`}
-                  >
-                    <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${isReal ? 'left-6' : 'left-1'}`} />
-                  </button>
-                </div>
-                
-                {isReal && (
-                  <motion.div 
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    className="border-t-2 border-black/5 pt-4 flex items-center justify-between"
-                  >
+          <form className="max-h-[85vh] overflow-y-auto p-8" onSubmit={handleSubmit}>
+            <div className="grid gap-8 md:grid-cols-2">
+              <div className="space-y-6">
+                <div className="space-y-4 rounded-3xl border-2 border-black/5 bg-black/[0.02] p-6">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-bold">Memorial Pet?</p>
-                      <p className="text-[10px] text-black/40 font-body uppercase tracking-wider">Is this pet a tribute to a companion who has passed?</p>
+                      <p className="text-sm font-bold">Real-life Pet?</p>
+                      <p className="text-[10px] text-black/40 font-body uppercase tracking-wider">Is this pet based on a real companion?</p>
                     </div>
                     <button
                       type="button"
-                      onClick={() => setIsAlive(!isAlive)}
-                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${!isAlive ? 'bg-rose-500' : 'bg-black/10'}`}
+                      onClick={() => setIsReal(!isReal)}
+                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${isReal ? 'bg-black' : 'bg-black/10'}`}
                     >
-                      <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${!isAlive ? 'left-6' : 'left-1'}`} />
+                      <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${isReal ? 'left-6' : 'left-1'}`} />
                     </button>
-                  </motion.div>
-                )}
-              </div>
+                  </div>
+                  
+                  {isReal && (
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      className="border-t-2 border-black/5 pt-4 flex items-center justify-between"
+                    >
+                      <div>
+                        <p className="text-sm font-bold">Memorial Pet?</p>
+                        <p className="text-[10px] text-black/40 font-body uppercase tracking-wider">Is this pet a tribute to a companion who has passed?</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAlive(!isAlive)}
+                        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${!isAlive ? 'bg-rose-500' : 'bg-black/10'}`}
+                      >
+                        <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${!isAlive ? 'left-6' : 'left-1'}`} />
+                      </button>
+                    </motion.div>
+                  )}
+                </div>
 
-              <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-4">
                   <label className="block">
-                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-black/45">
-                      Name
-                    </span>
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-black/45">Name</span>
                     <input
                       type="text"
                       value={name}
@@ -495,145 +482,67 @@ function CreatePetModal({
                     />
                   </label>
 
-                  <label className="block">
-                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-black/45">
-                      Gender
-                    </span>
-                    <select
-                      value={gender}
-                      onChange={(e) => setGender(e.target.value)}
-                      className="w-full rounded-2xl border border-black/10 bg-black/[0.03] px-4 py-3.5 text-sm outline-none transition-colors focus:border-black"
-                    >
-                      <option value="male">Boy</option>
-                      <option value="female">Girl</option>
-                      <option value="unknown">Unknown</option>
-                    </select>
-                  </label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <label className="block">
+                      <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-black/45">Gender</span>
+                      <select
+                        value={gender}
+                        onChange={(e) => setGender(e.target.value)}
+                        className="w-full rounded-2xl border border-black/10 bg-black/[0.03] px-4 py-3.5 text-sm outline-none transition-colors focus:border-black"
+                      >
+                        <option value="male">Boy</option>
+                        <option value="female">Girl</option>
+                        <option value="unknown">Unknown</option>
+                      </select>
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-black/45">Birthday</span>
+                      <input
+                        type="date"
+                        value={birthday}
+                        onChange={(e) => setBirthday(e.target.value)}
+                        className="w-full rounded-2xl border border-black/10 bg-black/[0.03] px-4 py-3.5 text-sm outline-none transition-colors focus:border-black"
+                      />
+                    </label>
+                  </div>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-black/45">
-                      Species
-                    </span>
-                    <select
-                      value={typeKey}
-                      onChange={(e) => setTypeKey(e.target.value)}
-                      className="w-full rounded-2xl border border-black/10 bg-black/[0.03] px-4 py-3.5 text-sm outline-none transition-colors focus:border-black"
-                    >
-                      {petCatalog.petTypes.map((t) => (
-                        <option key={t.key} value={t.key}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-black/45">
-                      Birthday
-                    </span>
-                    <input
-                      type="date"
-                      value={birthday}
-                      onChange={(e) => setBirthday(e.target.value)}
-                      className="w-full rounded-2xl border border-black/10 bg-black/[0.03] px-4 py-3.5 text-sm outline-none transition-colors focus:border-black"
-                    />
-                  </label>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block">
-                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-black/45">
-                      Description
-                    </span>
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-black/45">Description</span>
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Describe your pet's personality..."
-                      rows={2}
+                      rows={3}
                       className="w-full resize-none rounded-2xl border border-black/10 bg-black/[0.03] px-4 py-3.5 text-sm outline-none transition-colors focus:border-black font-body"
                     />
                   </label>
                 </div>
-
-                <div className="flex flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-black/10 bg-[#f5f0e8] p-6">
-                  <PetSprite
-                    alt={customSpriteFile ? "Custom Sprite" : selectedSprite.label}
-                    src={customSpritePreview || selectedSprite.idle}
-                    maxWidth={160}
-                    maxHeight={160}
-                  />
-                  <div className="mt-4 flex flex-col items-center gap-2">
-                    <p className="font-heading text-lg font-bold">
-                      {customSpriteFile ? "Custom Sprite" : selectedSprite.label}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => spriteFileInputRef.current?.click()}
-                      className="flex items-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-all hover:bg-black hover:text-white"
-                    >
-                      <Plus className="h-3 w-3" />
-                      {customSpriteFile ? "Change Custom Sprite" : "Upload Own Sprite (PNG/GIF)"}
-                    </button>
-                    {customSpriteFile && (
-                      <button
-                        type="button"
-                        onClick={() => setCustomSpriteFile(null)}
-                        className="text-[10px] font-bold text-red-500 uppercase tracking-wider"
-                      >
-                        Remove Custom Sprite
-                      </button>
-                    )}
-                    <input 
-                      type="file" 
-                      ref={spriteFileInputRef} 
-                      className="hidden" 
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) setCustomSpriteFile(file);
-                      }}
-                    />
-                  </div>
-                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {selectedPetType.sprites.map((s) => (
-                  <button
-                    key={s.key}
-                    type="button"
-                    onClick={() => setSpriteKey(s.key)}
-                    className={`rounded-2xl border p-2 transition-all ${
-                      s.key === spriteKey
-                        ? 'border-black bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)]'
-                        : 'border-black/5 bg-black/[0.02] hover:border-black/20'
-                    }`}
-                  >
-                    <div className="flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-white">
-                      <PetSprite src={s.idle} alt={s.label} maxWidth={80} maxHeight={80} />
+              <div className="flex flex-col">
+                <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-black/45">Visual Representation</span>
+                <div className="flex-1">
+                  <PetCustomizer onChange={setCustomizerData} />
+                </div>
+
+                <div className="mt-8 space-y-4">
+                  {error && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600 font-bold">
+                      {error}
                     </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-black py-4 font-heading font-bold text-white shadow-[6px_6px_0px_0px_rgba(0,0,0,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {loading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
+                    Bring them home
                   </button>
-                ))}
-              </div>
-
-              {error && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-                  {error}
                 </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-black py-4 font-heading font-bold text-white transition-all hover:bg-black/85 disabled:opacity-50"
-              >
-                {loading ? (
-                  <LoaderCircle className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Plus className="h-5 w-5" />
-                )}
-                Bring them home
-              </button>
+              </div>
             </div>
           </form>
         </motion.div>
@@ -730,19 +639,18 @@ function EditPetModal({
   const [isAlive, setIsAlive] = useState(pet.isAlive);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [customSpriteFile, setCustomSpriteFile] = useState<File | null>(null);
-  const [customSpritePreview, setCustomSpritePreview] = useState<string | null>(null);
-  const spriteFileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (customSpriteFile) {
-      const url = URL.createObjectURL(customSpriteFile);
-      setCustomSpritePreview(url);
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setCustomSpritePreview(null);
-    }
-  }, [customSpriteFile]);
+  const [customizerData, setCustomizerData] = useState<{
+    typeKey: string;
+    spriteKey: string;
+    customFiles: { idle?: File | null; run?: File | null; ball?: File | null; play?: File | null; };
+    useCustom: boolean;
+  }>({
+    typeKey: pet.typeKey,
+    spriteKey: pet.spriteKey,
+    customFiles: {},
+    useCustom: !!pet.customSpriteUrl,
+  });
 
   async function handleDelete() {
     if (!confirm(`Are you sure you want to delete ${pet.name}? This action cannot be undone.`)) return;
@@ -778,9 +686,13 @@ function EditPetModal({
       formData.append('birthday', birthday);
       formData.append('isReal', isReal ? 'true' : 'false');
       formData.append('isAlive', isAlive ? 'true' : 'false');
-      if (customSpriteFile) {
-        formData.append('sprite', customSpriteFile);
-      }
+      formData.append('typeKey', customizerData.typeKey);
+      formData.append('spriteKey', customizerData.spriteKey);
+
+      if (customizerData.customFiles.idle) formData.append('sprite', customizerData.customFiles.idle);
+      if (customizerData.customFiles.run) formData.append('run', customizerData.customFiles.run);
+      if (customizerData.customFiles.ball) formData.append('ball', customizerData.customFiles.ball);
+      if (customizerData.customFiles.play) formData.append('play', customizerData.customFiles.play);
 
       const res = await fetch(`${API_URL}/pets/${pet.id}`, {
         method: 'PATCH',
@@ -813,7 +725,7 @@ function EditPetModal({
         onClick={onClose}
       >
         <motion.div
-          className="relative w-full max-w-md overflow-hidden rounded-[2.5rem] border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+          className="relative w-full max-w-md md:max-w-3xl overflow-hidden rounded-[2.5rem] border-2 border-black bg-white shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -824,7 +736,7 @@ function EditPetModal({
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white">
                 <Sparkles className="h-5 w-5" />
               </div>
-              <h2 className="font-heading text-xl font-bold">Edit</h2>
+              <h2 className="font-heading text-xl font-bold">Edit Pet</h2>
             </div>
             <button
               onClick={onClose}
@@ -834,142 +746,133 @@ function EditPetModal({
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6 p-8">
-            <div className="space-y-4 rounded-3xl border-2 border-black/5 bg-black/[0.02] p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-bold">Real-life Pet?</p>
-                  <p className="text-[10px] text-black/40 font-body uppercase tracking-wider">Is this pet based on a real companion?</p>
+          <form onSubmit={handleSubmit} className="max-h-[85vh] overflow-y-auto p-8">
+            <div className="grid gap-8 md:grid-cols-2">
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-black/40">Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full rounded-xl border border-black/10 bg-black/5 px-4 py-3 outline-none transition-colors focus:border-black/20"
+                  />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsReal(!isReal)}
-                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${isReal ? 'bg-black' : 'bg-black/10'}`}
-                >
-                  <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${isReal ? 'left-6' : 'left-1'}`} />
-                </button>
-              </div>
-              
-              {isReal && (
-                <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  className="border-t-2 border-black/5 pt-4 flex items-center justify-between"
-                >
-                  <div>
-                    <p className="text-sm font-bold">Memorial Pet?</p>
-                    <p className="text-[10px] text-black/40 font-body uppercase tracking-wider">Is this pet a tribute to a companion who has passed?</p>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-black/40">Birthday</label>
+                    <input
+                      type="date"
+                      value={birthday}
+                      onChange={(e) => setBirthday(e.target.value)}
+                      className="w-full rounded-xl border border-black/10 bg-black/5 px-4 py-3 outline-none transition-colors focus:border-black/20"
+                    />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-black/40">Gender</label>
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value)}
+                      className="w-full rounded-xl border border-black/10 bg-black/5 px-4 py-3 outline-none transition-colors focus:border-black/20"
+                    >
+                      <option value="male">Boy</option>
+                      <option value="female">Girl</option>
+                      <option value="unknown">Unknown</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-black/40">Description</label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Describe your pet's personality..."
+                    rows={4}
+                    className="w-full resize-none rounded-xl border border-black/10 bg-black/5 px-4 py-3 outline-none transition-colors focus:border-black/20 font-body text-sm"
+                  />
+                </div>
+
+                <div className="space-y-4 rounded-3xl border-2 border-black/5 bg-black/[0.02] p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold">Real-life Pet?</p>
+                      <p className="text-[10px] text-black/40 font-body uppercase tracking-wider">Based on a real companion?</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsReal(!isReal)}
+                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${isReal ? 'bg-black' : 'bg-black/10'}`}
+                    >
+                      <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${isReal ? 'left-6' : 'left-1'}`} />
+                    </button>
+                  </div>
+                  
+                  {isReal && (
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      className="border-t-2 border-black/5 pt-4 flex items-center justify-between"
+                    >
+                      <div>
+                        <p className="text-sm font-bold">Memorial Pet?</p>
+                        <p className="text-[10px] text-black/40 font-body uppercase tracking-wider">A tribute to one who passed?</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAlive(!isAlive)}
+                        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${!isAlive ? 'bg-rose-500' : 'bg-black/10'}`}
+                      >
+                        <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${!isAlive ? 'left-6' : 'left-1'}`} />
+                      </button>
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col space-y-6">
+                <div className="flex-1 space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-black/40">Visual Representation</label>
+                  <PetCustomizer 
+                    initialTypeKey={pet.typeKey}
+                    initialSpriteKey={pet.spriteKey}
+                    initialCustomSprites={{
+                      idle: pet.customSpriteUrl,
+                      run: pet.customRunUrl,
+                      ball: pet.customBallUrl,
+                      play: pet.customPlayUrl,
+                    }}
+                    onChange={setCustomizerData}
+                  />
+                </div>
+
+                {error && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+                    {error}
+                  </div>
+                )}
+
+                <div className="space-y-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-black py-4 font-heading text-sm font-bold uppercase tracking-widest text-white shadow-[6px_6px_0px_0px_rgba(0,0,0,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {loading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : 'Save Changes'}
+                  </button>
+
                   <button
                     type="button"
-                    onClick={() => setIsAlive(!isAlive)}
-                    className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${!isAlive ? 'bg-rose-500' : 'bg-black/10'}`}
+                    onClick={handleDelete}
+                    disabled={loading}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-red-500/20 py-4 font-heading text-sm font-bold uppercase tracking-widest text-red-500 transition-all hover:bg-red-50 disabled:opacity-50"
                   >
-                    <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${!isAlive ? 'left-6' : 'left-1'}`} />
+                    {loading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : 'Delete Pet'}
                   </button>
-                </motion.div>
-              )}
-            </div>
-
-            {error && (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
-                {error}
+                </div>
               </div>
-            )}
-
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-black/40">Name</label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-xl border border-black/10 bg-black/5 px-4 py-3 outline-none transition-colors focus:border-black/20"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-black/40">Birthday</label>
-                <input
-                  type="date"
-                  value={birthday}
-                  onChange={(e) => setBirthday(e.target.value)}
-                  className="w-full rounded-xl border border-black/10 bg-black/5 px-4 py-3 outline-none transition-colors focus:border-black/20"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-black/40">Gender</label>
-                <select
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value)}
-                  className="w-full rounded-xl border border-black/10 bg-black/5 px-4 py-3 outline-none transition-colors focus:border-black/20"
-                >
-                  <option value="male">Boy</option>
-                  <option value="female">Girl</option>
-                  <option value="unknown">Unknown</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-black/40">Description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe your pet's personality..."
-                rows={3}
-                className="w-full resize-none rounded-xl border border-black/10 bg-black/5 px-4 py-3 outline-none transition-colors focus:border-black/20 font-body text-sm"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-black/40">Pet Sprite</label>
-              <div className="flex flex-col items-center gap-3 rounded-2xl border border-black/5 bg-black/[0.02] p-4">
-                <PetSprite 
-                  alt="Pet Preview" 
-                  src={customSpritePreview || (pet.customSpriteUrl ? `${API_URL}/files/${pet.customSpriteUrl.split(/[/\\]/).pop()}` : getSpriteByKeys(pet.typeKey, pet.spriteKey)?.idle || '')} 
-                  maxWidth={100} 
-                  maxHeight={100} 
-                />
-                <button
-                  type="button"
-                  onClick={() => spriteFileInputRef.current?.click()}
-                  className="flex items-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-all hover:bg-black hover:text-white"
-                >
-                  <Plus className="h-3 w-3" />
-                  Change Pet Sprite (PNG/GIF)
-                </button>
-                <input 
-                  type="file" 
-                  ref={spriteFileInputRef} 
-                  className="hidden" 
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) setCustomSpriteFile(file);
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-black py-4 font-heading text-sm font-bold uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-              >
-                {loading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : 'Save Changes'}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-red-500/20 py-4 font-heading text-sm font-bold uppercase tracking-widest text-red-500 transition-all hover:bg-red-50 disabled:opacity-50"
-              >
-                {loading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : 'Delete Pet'}
-              </button>
             </div>
           </form>
         </motion.div>
@@ -978,14 +881,17 @@ function EditPetModal({
   );
 }
 
-function ActionButton({ icon: Icon, label, onClick, color, id }: { icon: any, label: string, onClick: () => void, color: string, id: string }) {
+function ActionButton({ icon: Icon, label, onClick, color, id, disabled }: { icon: any, label: string, onClick: () => void, color: string, id: string, disabled?: boolean }) {
   return (
     <button
       id={id}
       onClick={onClick}
-      className={`group flex min-w-[90px] flex-col items-center gap-2 rounded-[2rem] border-2 border-black/5 p-4 transition-all hover:-translate-y-1 hover:border-black active:scale-95 sm:min-w-[110px] sm:p-5 ${color}`}
+      disabled={disabled}
+      className={`group flex min-w-[90px] flex-col items-center gap-2 rounded-[2rem] border-2 border-black/5 p-4 transition-all active:scale-95 sm:min-w-[110px] sm:p-5 ${
+        disabled ? 'opacity-40 cursor-not-allowed' : 'hover:-translate-y-1 hover:border-black'
+      } ${color}`}
     >
-      <div className="rounded-2xl bg-white/50 p-2 transition-colors group-hover:bg-white sm:p-3">
+      <div className={`rounded-2xl p-2 transition-colors sm:p-3 ${disabled ? 'bg-white/20' : 'bg-white/50 group-hover:bg-white'}`}>
         <Icon className="h-6 w-6 sm:h-7 sm:w-7" />
       </div>
       <span className="font-heading text-[10px] font-bold uppercase tracking-wider sm:text-xs">{label}</span>
@@ -1000,6 +906,7 @@ function MemoryCardsModal({
   pet: PetRecord;
   onClose: () => void;
 }) {
+  const { toast } = useToast();
   const [cards, setCards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1095,7 +1002,7 @@ function MemoryCardsModal({
                           onClick={() => {
                             const url = `${window.location.origin}/share-memory/${card.id}`;
                             navigator.clipboard.writeText(url);
-                            alert('Memory card link copied!');
+                            toast('Memory card link copied!', 'success');
                           }}
                           className="rounded-lg border border-black/10 bg-white p-2 hover:bg-black hover:text-white transition-colors"
                           title="Share"
@@ -1118,9 +1025,11 @@ function MemoryCardsModal({
 function PetPlayground({ 
   pet, 
   onAction,
+  isTyping,
 }: { 
   pet: PetRecord;
   onAction?: (action: string, message: string) => void;
+  isTyping?: boolean;
 }) {
   const petType = getPetTypeByKey(pet.typeKey) ?? defaultPetType;
   const sprite = getSpriteByKeys(pet.typeKey, pet.spriteKey) ?? petType.sprites[0];
@@ -1128,9 +1037,14 @@ function PetPlayground({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const getSpriteSrc = () => {
+    if (action === 'run' && pet.customRunUrl) return `${API_URL}/files/${pet.customRunUrl.split(/[/\\]/).pop()}`;
+    if (action === 'withBall' && pet.customBallUrl) return `${API_URL}/files/${pet.customBallUrl.split(/[/\\]/).pop()}`;
+    if (action === 'swipe' && pet.customPlayUrl) return `${API_URL}/files/${pet.customPlayUrl.split(/[/\\]/).pop()}`;
+    
     if (pet.customSpriteUrl) {
       return `${API_URL}/files/${pet.customSpriteUrl.split(/[/\\]/).pop()}`;
     }
+    
     if (action === 'run') return sprite.run || sprite.idle.replace('_idle_', '_run_');
     if (action === 'swipe') return sprite.swipe || sprite.idle.replace('_idle_', '_swipe_');
     if (action === 'withBall') return sprite.withBall || sprite.idle.replace('_idle_', '_with_ball_');
@@ -1172,6 +1086,7 @@ function PetPlayground({
           onClick={() => triggerAnimation('run', 5000, 'run', getRandomPetActionMessage(pet.typeKey, 'run'))}
           color="bg-amber-100 text-amber-600 hover:bg-amber-200"
           id="btn-run"
+          disabled={isTyping}
         />
         <ActionButton
           icon={CircleDashed}
@@ -1179,6 +1094,7 @@ function PetPlayground({
           onClick={() => triggerAnimation('withBall', 5000, 'ball', getRandomPetActionMessage(pet.typeKey, 'ball'))}
           color="bg-blue-100 text-blue-600 hover:bg-blue-200"
           id="btn-ball"
+          disabled={isTyping}
         />
         <ActionButton
           icon={Gamepad2}
@@ -1186,6 +1102,7 @@ function PetPlayground({
           onClick={() => triggerAnimation('swipe', 5000, 'play', getRandomPetActionMessage(pet.typeKey, 'play'))}
           color="bg-rose-100 text-rose-600 hover:bg-rose-200"
           id="btn-play"
+          disabled={isTyping}
         />
       </div>
     </div>
@@ -1218,10 +1135,15 @@ function ChatPanel({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [ttsLoading, setTtsLoading] = useState<Record<string, boolean>>({});
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [hasNewMessages, setHasNewMessages] = useState(false);
+  const isAtBottomRef = useRef(true);
   const petType = getPetTypeByKey(pet.typeKey) ?? defaultPetType;
 
   useEffect(() => {
@@ -1235,8 +1157,29 @@ function ChatPanel({
   }, [selectedFile]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isAtBottomRef.current) {
+      endRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setHasNewMessages(false);
+    } else {
+      setHasNewMessages(true);
+    }
   }, [messages, isTyping]);
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    const isAtBottom = scrollHeight - scrollTop <= clientHeight + 100;
+    isAtBottomRef.current = isAtBottom;
+    setShowScrollButton(!isAtBottom);
+    if (isAtBottom) {
+      setHasNewMessages(false);
+    }
+  };
+
+  const scrollToBottom = () => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setHasNewMessages(false);
+  };
 
   const startRecording = async () => {
     try {
@@ -1285,6 +1228,31 @@ function ChatPanel({
     setReplyTo(null);
   };
 
+  const handleTTS = async (message: ChatRecord) => {
+    if (ttsLoading[message.id]) return;
+    setTtsLoading(prev => ({ ...prev, [message.id]: true }));
+    try {
+      const res = await fetch(`${API_URL}/pets/${pet.id}/tts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ text: message.text }),
+      });
+      if (!res.ok) throw new Error('TTS failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.play();
+      audio.onended = () => URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setTtsLoading(prev => ({ ...prev, [message.id]: false }));
+    }
+  };
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b-2 border-black pb-5">
@@ -1299,7 +1267,25 @@ function ChatPanel({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto py-4">
+      <div 
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="relative min-h-0 flex-1 space-y-6 overflow-y-auto py-4 scroll-smooth"
+      >
+        <AnimatePresence>
+          {showScrollButton && (
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              onClick={scrollToBottom}
+              className="sticky top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-full bg-black px-4 py-2 text-xs font-bold text-white shadow-lg hover:bg-black/90 active:scale-95 transition-all"
+            >
+              <Zap className={cn("h-3 w-3", hasNewMessages && "text-amber-400 fill-amber-400 animate-pulse")} />
+              {hasNewMessages ? 'New Messages' : 'Scroll to Bottom'}
+            </motion.button>
+          )}
+        </AnimatePresence>
         <AnimatePresence initial={false}>
           {messages.map((message, index) => {
             const isSameSenderAsPrevious = index > 0 && messages[index - 1].role === message.role;
@@ -1338,6 +1324,21 @@ function ChatPanel({
                     >
                       <Reply className="h-3.5 w-3.5 text-black" />
                     </button>
+
+                    {message.role === 'pet' && (
+                      <button
+                        onClick={() => handleTTS(message)}
+                        disabled={ttsLoading[message.id]}
+                        className="absolute -right-10 top-10 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg bg-white border border-black/10 shadow-sm hover:bg-black/5 z-20 disabled:opacity-50"
+                        title="Speak"
+                      >
+                        {ttsLoading[message.id] ? (
+                          <LoaderCircle className="h-3.5 w-3.5 animate-spin text-black" />
+                        ) : (
+                          <Volume2 className="h-3.5 w-3.5 text-black" />
+                        )}
+                      </button>
+                    )}
 
                     {message.replyToId && (
                       <div className={`mb-2 rounded-lg border-l-4 p-2 text-[10px] ${
@@ -1700,6 +1701,7 @@ function DashboardHeader({
   userInitial: string;
   pet: PetRecord | null;
 }) {
+  const { toast } = useToast();
   return (
     <header className="flex items-center justify-between border-b-2 border-black bg-white px-4 py-4 sm:px-6">
       <div className="flex items-center gap-3">
@@ -1721,7 +1723,7 @@ function DashboardHeader({
               onClick={() => {
                 const url = `${window.location.origin}/share/${pet.shareToken}`;
                 navigator.clipboard.writeText(url);
-                alert('Share link copied to clipboard!');
+                toast('Share link copied to clipboard!', 'success');
               }}
               className="flex items-center gap-2 rounded-lg border border-black/10 bg-black/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all hover:border-black/20 hover:bg-black/10"
             >
@@ -2069,6 +2071,7 @@ export default function AppDashboard() {
           }
         }
       }
+      setIsTyping(false);
     } catch (err) {
       console.error(err);
       setIsTyping(false);
@@ -2104,6 +2107,7 @@ export default function AppDashboard() {
                 <PetPlayground 
                   pet={selectedPet} 
                   onAction={handlePetAction}
+                  isTyping={isTyping}
                 />
               </section>
 

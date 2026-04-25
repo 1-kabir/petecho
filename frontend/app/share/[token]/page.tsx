@@ -3,18 +3,20 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
-import { Zap, CircleDashed, Gamepad2, PawPrint, Heart } from 'lucide-react';
+import { Zap, CircleDashed, Gamepad2, PawPrint, Heart, Volume2, LoaderCircle } from 'lucide-react';
 import { PetSprite } from '@/components/pet-sprite';
 import { type PetRecord } from '@/lib/auth';
-import { getPetTypeByKey, getSpriteByKeys } from '@/lib/pet-catalog';
-import { type PetSpriteOption } from '@/lib/pet-catalog';
+import { getPetTypeByKey, getSpriteByKeys, type PetSpriteOption } from '@/lib/pet-catalog';
+import { useToast } from '@/lib/toast-context';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function SharePage() {
   const { token } = useParams();
+  const { toast } = useToast();
   const [pet, setPet] = useState<PetRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [ttsLoading, setTtsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [action, setAction] = useState<'idle' | 'run' | 'swipe' | 'withBall'>('idle');
   const [dialogue, setDialogue] = useState<string | null>(null);
@@ -38,6 +40,10 @@ export default function SharePage() {
 
   const getSpriteSrc = () => {
     if (!pet || !sprite) return '';
+    if (action === 'run' && pet.customRunUrl) return `${API_URL}/files/${pet.customRunUrl.split(/[/\\]/).pop()}`;
+    if (action === 'withBall' && pet.customBallUrl) return `${API_URL}/files/${pet.customBallUrl.split(/[/\\]/).pop()}`;
+    if (action === 'swipe' && pet.customPlayUrl) return `${API_URL}/files/${pet.customPlayUrl.split(/[/\\]/).pop()}`;
+
     if (pet.customSpriteUrl) {
       return `${API_URL}/files/${pet.customSpriteUrl.split(/[/\\]/).pop()}`;
     }
@@ -58,7 +64,7 @@ export default function SharePage() {
     if (lastClick && now - parseInt(lastClick) < TWELVE_HOURS) {
       const remaining = TWELVE_HOURS - (now - parseInt(lastClick));
       const hours = Math.ceil(remaining / (1000 * 60 * 60));
-      alert(`Slow down! You can do this again in ${hours} hours.`);
+      toast(`Slow down! You can do this again in ${hours} hours.`, 'info');
       return;
     }
 
@@ -96,6 +102,28 @@ export default function SharePage() {
     }
   };
 
+  const handleTTS = async (text: string) => {
+    if (ttsLoading) return;
+    setTtsLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/public/pets/${token}/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error('TTS failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.play();
+      audio.onended = () => URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setTtsLoading(false);
+    }
+  };
+
   if (loading) return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#fdfaf5]">
       <div className="h-12 w-12 animate-bounce rounded-2xl bg-black flex items-center justify-center">
@@ -130,9 +158,21 @@ export default function SharePage() {
                 initial={{ scale: 0.8, opacity: 0, y: 10 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.8, opacity: 0, y: 10 }}
-                className="absolute -top-10 right-4 rounded-2xl border-2 border-black bg-white px-5 py-3 font-heading text-sm font-bold shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] z-20"
+                className="absolute -top-10 right-4 rounded-2xl border-2 border-black bg-white px-5 py-3 font-heading text-sm font-bold shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] z-20 flex items-center gap-3"
               >
-                {dialogue}
+                <span>{dialogue}</span>
+                <button
+                  onClick={() => handleTTS(dialogue!)}
+                  disabled={ttsLoading}
+                  className="p-1 rounded-lg hover:bg-black/5 disabled:opacity-50"
+                  title="Speak"
+                >
+                  {ttsLoading ? (
+                    <LoaderCircle className="h-3 w-3 animate-spin text-black" />
+                  ) : (
+                    <Volume2 className="h-3 w-3 text-black/40" />
+                  )}
+                </button>
                 <div className="absolute -bottom-2 right-6 h-4 w-4 rotate-45 border-b-2 border-r-2 border-black bg-white" />
               </motion.div>
             )}

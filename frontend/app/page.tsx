@@ -5,9 +5,6 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import {
   ArrowRight,
-  Cat,
-  Dog,
-  Bird,
   Image as ImageIcon,
   Video,
   FileAudio,
@@ -17,6 +14,8 @@ import {
   MessageSquare,
   Sparkles,
   PawPrint,
+  Mic,
+  Paperclip,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -39,7 +38,7 @@ export default function PetechoLanding() {
       <Hero />
       <DemoSection />
       <Features />
-      <MemoryBooks />
+      <MemoryCards />
       <Customization />
       <Autonomous />
       <CallToAction />
@@ -60,7 +59,7 @@ function Navbar() {
           <span className="font-display text-xl font-bold tracking-tight">Petecho</span>
         </Link>
         <div className="hidden items-center gap-8 text-sm font-medium md:flex">
-          {['Features', 'Memory Books', 'Customization', 'About'].map((item) => (
+          {['Features', 'Memories', 'Customization', 'About'].map((item) => (
             <Link
               key={item}
               href={`#${item.toLowerCase().replace(' ', '-')}`}
@@ -117,8 +116,8 @@ function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
         >
-          Convert your real-world pet into a digital companion. Feed them, play games,
-          and build a relationship that mimics reality. Cherish them forever.
+          Bring your companions into a digital world. Run together, play ball,
+          and build a relationship that stays with you. Cherish them forever.
         </motion.p>
 
         <motion.div
@@ -166,7 +165,7 @@ function Hero() {
           className="relative h-56 w-56 -rotate-6 transform overflow-hidden rounded-full border-2 border-black transition-transform duration-500 hover:rotate-0"
           style={{ position: 'relative' }}
         >
-          <Image unoptimized src="https://picsum.photos/seed/cat1/400/400" alt="Pet memory" fill className="object-cover" />
+          <Image unoptimized src="https://picsum.photos/seed/dino/400/400" alt="Pet memory" fill className="object-cover" />
         </div>
       </motion.div>
     </section>
@@ -176,76 +175,16 @@ function Hero() {
 function DemoSection() {
   return (
     <section className="border-t border-black/10 bg-black/5 px-6 py-24">
-      <div className="mx-auto max-w-7xl">
-        <div className="flex flex-col items-center gap-16 md:flex-row">
-          <div className="flex-1 space-y-8">
-            <h2 className="font-display text-4xl font-bold tracking-tight md:text-5xl">
-              Talk to them. Like they never left.
-            </h2>
-            <p className="max-w-md text-lg text-black/70">
-              Petecho uses advanced AI to learn your pet&apos;s personality from your
-              stories, pictures, and videos. Text, audio, or video chat with your
-              companion just like you would with a friend.
-            </p>
-            <div className="flex gap-4">
-              {[
-                { label: 'Text', icon: MessageSquare },
-                { label: 'Audio', icon: FileAudio },
-                { label: 'Video', icon: Video },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="flex flex-col items-center gap-2 rounded-xl border border-black/10 bg-white p-4 transition-transform hover:-translate-y-1"
-                >
-                  <item.icon className="h-6 w-6" />
-                  <span className="text-xs font-semibold uppercase">{item.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="relative w-full max-w-md flex-1">
-            <div className="flex h-[500px] flex-col overflow-hidden rounded-3xl border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-              <div className="flex items-center justify-center gap-3 border-b-2 border-black p-4">
-                <div 
-                  className="relative h-10 w-10 overflow-hidden rounded-full border border-black"
-                  style={{ position: 'relative' }}
-                >
-                  <Image unoptimized src="https://picsum.photos/seed/husky/100/100" alt="Husky" fill className="object-cover" />
-                </div>
-                <div>
-                  <h3 className="font-bold">Max</h3>
-                  <p className="text-xs text-black/60">Digital Husky</p>
-                </div>
-              </div>
-              <div className="flex flex-1 flex-col justify-end space-y-4 overflow-y-auto bg-black/5 p-4">
-                <div className="max-w-[80%] self-end rounded-2xl rounded-tr-sm bg-black px-4 py-2 text-white">
-                  Miss you buddy. Ready for a walk?
-                </div>
-                <div className="max-w-[80%] self-start rounded-2xl rounded-tl-sm border border-black/20 bg-white px-4 py-2">
-                  *Wags tail excitedly* Woof! I&apos;ve been waiting by the digital door all morning! Bring the red ball!
-                </div>
-                <div className="flex max-w-[80%] items-center gap-2 self-start rounded-2xl rounded-tl-sm border border-black/20 bg-white p-2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/5">
-                    <FileAudio className="h-4 w-4" />
-                  </div>
-                  <div className="h-2 w-24 flex-1 overflow-hidden rounded-full bg-black/10">
-                    <div className="h-full w-2/3 rounded-full bg-black" />
-                  </div>
-                  <span className="pr-2 text-xs font-medium text-black/50">0:04</span>
-                </div>
-              </div>
-              <div className="flex gap-2 border-t-2 border-black p-4">
-                <input
-                  type="text"
-                  placeholder="Message Max..."
-                  className="flex-1 rounded-full border border-transparent bg-black/5 px-4 outline-none transition-colors focus:border-black/20"
-                />
-                <button className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-white transition-transform hover:scale-105">
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
+      <div className="mx-auto max-w-3xl text-center">
+        <div className="space-y-8">
+          <h2 className="font-display text-4xl font-bold tracking-tight md:text-5xl">
+            Talk to them. Like they never left.
+          </h2>
+          <p className="mx-auto max-w-2xl text-lg text-black/70">
+            Petecho uses advanced AI to learn your pet&apos;s personality from your
+            stories, pictures, and videos. Talk with text, audio or video with your
+            companion just like you would with a friend.
+          </p>
         </div>
       </div>
     </section>
@@ -255,13 +194,13 @@ function DemoSection() {
 function Features() {
   const features = [
     {
-      title: 'Interactive Gameplay',
-      description: 'Feed them, play fetch, and engage in mini-games that strengthen your digital bond.',
+      title: 'Playful Interactions',
+      description: 'Run together, give them a ball, and engage in interactions that strengthen your digital bond.',
       icon: Sparkles,
     },
     {
-      title: 'Rich Media Uploads',
-      description: 'Upload pictures, videos, and audio. The AI uses it all to reconstruct their unique personality.',
+      title: 'Media Exchange',
+      description: 'Share pictures, videos, and voice messages. Every exchange becomes part of your shared history.',
       icon: ImageIcon,
     },
     {
@@ -297,9 +236,9 @@ function Features() {
   );
 }
 
-function MemoryBooks() {
+function MemoryCards() {
   return (
-    <section id="memory-books" className="overflow-hidden border-t border-black/10 bg-black px-6 py-24 text-white">
+    <section id="memories" className="overflow-hidden border-t border-black/10 bg-black px-6 py-24 text-white">
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-16 md:flex-row">
         <div className="w-full flex-1">
           <div className="relative mx-auto aspect-[4/3] w-full max-w-lg">
@@ -335,16 +274,16 @@ function MemoryBooks() {
         </div>
         <div className="flex-1 space-y-6">
           <h2 className="font-display text-4xl font-bold tracking-tight md:text-5xl">
-            Your very own
+            Your shared
             <br />
-            Memory Books.
+            Memory Cards.
           </h2>
           <p className="max-w-md text-lg text-white/70">
-            Automatically curates your uploaded photos, chat history, and generated moments
-            into beautiful digital scrapbooks. Relive your favorite chapters anytime.
+            Automatically curates your shared photos and interactions into beautiful
+            digital memory cards. Relive your favorite highlights anytime.
           </p>
           <ul className="space-y-4 pt-4">
-            {['Auto-generated weekly recaps', 'Printable PDF exports', 'Chronological timelines'].map((item) => (
+            {['Weekly Recaps', 'Downloadable cards', 'Chronological highlights'].map((item) => (
               <li key={item} className="flex items-center gap-3">
                 <div className="h-1.5 w-1.5 rounded-full bg-white" />
                 <span className="text-white/90">{item}</span>
@@ -358,36 +297,29 @@ function MemoryBooks() {
 }
 
 function Customization() {
-  const pets = [
-    { name: 'Dogs', icon: Dog },
-    { name: 'Cats', icon: Cat },
-    { name: 'Birds', icon: Bird },
-    { name: 'Exotics', icon: Sparkles },
-  ];
+  const pets = ['Dogs', 'Chickens', 'Crabs', 'Dinos'];
 
   return (
     <section id="customization" className="border-t border-black/10 bg-white px-6 py-32 text-center">
       <div className="mx-auto max-w-4xl space-y-8">
         <h2 className="font-display text-4xl font-bold tracking-tight md:text-5xl">
-          Not just cats &amp; dogs.
+          More than just dogs.
         </h2>
         <p className="mx-auto max-w-2xl pb-8 text-xl text-black/60">
-          Whether you had a loyal hound, a cunning fox, a slithering snake, or a backyard
-          chicken, Petecho supports extensive customization so your digital pet looks and
-          acts exactly like yours did.
+          Whether you have a loyal Akita, a chatty Chicken, or a tiny Snail,
+          Petecho supports a wide variety of companions to keep you connected.
         </p>
 
         <div className="flex flex-wrap justify-center gap-4">
           {pets.map((pet) => (
             <div
-              key={pet.name}
+              key={pet}
               className="flex cursor-crosshair items-center gap-2 rounded-full border border-black/10 px-6 py-3 transition-all hover:-translate-y-1 hover:border-black"
             >
-              <pet.icon className="h-5 w-5" />
-              <span className="font-medium">{pet.name}</span>
+              <span className="font-medium">{pet}</span>
             </div>
           ))}
-          {['Rats', 'Snakes', 'Foxes', 'Chickens'].map((pet) => (
+          {['Rats', 'Snakes', 'Horses', 'Snails'].map((pet) => (
             <div
               key={pet}
               className="flex cursor-crosshair items-center gap-2 rounded-full border border-black/10 px-6 py-3 transition-all hover:-translate-y-1 hover:border-black"
@@ -411,8 +343,8 @@ function Autonomous() {
           </h2>
           <p className="max-w-md text-lg text-black/70">
             Just like a real pet nudging you for attention, your digital companion will
-            autonomously send you messages, share a generated selfie, or remind you of a
-            past memory.
+            autonomously reach out to check in on you or share a new highlight from your
+            shared memories.
           </p>
           <div className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium">
             <HeartPulse className="h-4 w-4 text-red-500" />
@@ -426,12 +358,12 @@ function Autonomous() {
                 className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full"
                 style={{ position: 'relative' }}
               >
-                <Image unoptimized src="https://picsum.photos/seed/cat2/100/100" alt="Cat" fill className="object-cover" />
+                <Image unoptimized src="https://picsum.photos/seed/akita2/100/100" alt="Akita" fill className="object-cover" />
               </div>
               <div>
-                <div className="mb-1 font-bold">Luna just sent a message!</div>
+                <div className="mb-1 font-bold">Hachi just sent a message!</div>
                 <p className="text-sm text-black/70">
-                  &quot;I found this digital sunbeam and thought of you. Have a good day at work!&quot;
+                  &quot;Hey there! Checking in! Did you remember to drink some water today? *wags tail*&quot;
                 </p>
               </div>
             </div>
@@ -441,9 +373,9 @@ function Autonomous() {
                 <ImageIcon className="h-5 w-5 text-black/40" />
               </div>
               <div>
-                <div className="mb-1 font-bold">Memory Unlocked</div>
+                <div className="mb-1 font-bold">New Memory Card</div>
                 <p className="text-sm text-black/70">
-                  Luna generated a new watercolor drawing based on your upload from 2021.
+                  Hachi curated a new highlight card from your shared photos this week.
                 </p>
               </div>
             </div>
@@ -499,7 +431,7 @@ function Footer() {
           <div>
             <h4 className="mb-4 text-sm font-bold uppercase tracking-wider text-white/50">Product</h4>
             <ul className="space-y-3 text-sm">
-              {['Digitalization', 'Memory Books', 'Custom Pets', 'Pricing'].map((item) => (
+              {['Digitalization', 'Memories', 'Custom Pets', 'Pricing'].map((item) => (
                 <li key={item}>
                   <Link href="#" className="hover:underline">{item}</Link>
                 </li>

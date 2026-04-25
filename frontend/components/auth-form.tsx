@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { PetSprite } from '@/components/pet-sprite';
+import { PetCustomizer } from '@/components/pet-customizer';
 import { API_URL, setAuthCookie, getAuthCookie } from '@/lib/auth';
 import { getPetTypeByKey, petCatalog } from '@/lib/pet-catalog';
 
@@ -30,30 +31,28 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [petName, setPetName] = useState('');
-  const [petGender, setPetGender] = useState<PetGender>('unknown');
-  const [petType, setPetType] = useState(defaultPetType.key);
-  const [petSprite, setPetSprite] = useState(defaultPetType.sprites[0].key);
+  const [petGender, setPetGender] = useState<PetGender>('male');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const selectedPetType = useMemo(
-    () => getPetTypeByKey(petType) ?? defaultPetType,
-    [petType]
-  );
-  const selectedSprite =
-    selectedPetType.sprites.find((sprite) => sprite.key === petSprite) ??
-    selectedPetType.sprites[0];
+  const [customizerData, setCustomizerData] = useState<{
+    typeKey: string;
+    spriteKey: string;
+    customFiles: { idle?: File | null; run?: File | null; ball?: File | null; play?: File | null; };
+    useCustom: boolean;
+  }>({
+    typeKey: petCatalog.petTypes[0].key,
+    spriteKey: petCatalog.petTypes[0].sprites[0].key,
+    customFiles: {},
+    useCustom: false,
+  });
 
   useEffect(() => {
     if (getAuthCookie()) {
       router.replace('/app');
       return;
     }
-
-    if (!selectedPetType.sprites.some((sprite) => sprite.key === petSprite)) {
-      setPetSprite(selectedPetType.sprites[0].key);
-    }
-  }, [petSprite, selectedPetType, router]);
+  }, [router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,20 +60,34 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/auth/${mode}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          petName,
-          petGender,
-          petType,
-          petSprite,
-        }),
-      });
+      let response;
+      if (mode === 'signup') {
+        const formData = new FormData();
+        formData.append('email', email);
+        formData.append('password', password);
+        formData.append('petName', petName);
+        formData.append('petGender', petGender);
+        formData.append('petType', customizerData.typeKey);
+        formData.append('petSprite', customizerData.spriteKey);
+
+        if (customizerData.customFiles.idle) formData.append('sprite', customizerData.customFiles.idle);
+        if (customizerData.customFiles.run) formData.append('run', customizerData.customFiles.run);
+        if (customizerData.customFiles.ball) formData.append('ball', customizerData.customFiles.ball);
+        if (customizerData.customFiles.play) formData.append('play', customizerData.customFiles.play);
+
+        response = await fetch(`${API_URL}/auth/signup`, {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        response = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        });
+      }
 
       const payload = await response.json();
 
@@ -206,20 +219,6 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
                       Pet Setup
                     </div>
 
-                    <label className="block">
-                      <span className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-black/45">
-                        Pet Name
-                      </span>
-                      <input
-                        type="text"
-                        value={petName}
-                        onChange={(event) => setPetName(event.target.value)}
-                        placeholder="Max"
-                        className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3.5 text-sm outline-none transition-colors focus:border-black"
-                        required
-                      />
-                    </label>
-
                     <div className="grid gap-4 sm:grid-cols-2">
                       <label className="block">
                         <span className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-black/45">
@@ -242,80 +241,24 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
 
                       <label className="block">
                         <span className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-black/45">
-                          Pet Type
+                          Pet Name
                         </span>
-                        <select
-                          value={petType}
-                          onChange={(event) => setPetType(event.target.value)}
+                        <input
+                          type="text"
+                          value={petName}
+                          onChange={(event) => setPetName(event.target.value)}
+                          placeholder="Max"
                           className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3.5 text-sm outline-none transition-colors focus:border-black"
-                        >
-                          {petCatalog.petTypes.map((type) => (
-                            <option key={type.key} value={type.key}>
-                              {type.label}
-                            </option>
-                          ))}
-                        </select>
+                          required={mode === 'signup'}
+                        />
                       </label>
                     </div>
 
-                    <div className="rounded-[1.5rem] border border-black/10 bg-white p-4">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                        <div className="rounded-[1.25rem] border border-black/10 bg-[#f5f0e8] p-3">
-                          <PetSprite
-                            alt={selectedSprite.label}
-                            src={selectedSprite.idle}
-                            maxWidth={144}
-                            maxHeight={144}
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold uppercase tracking-[0.2em] text-black/45">
-                            Selected Sprite
-                          </p>
-                          <h3 className="mt-2 font-heading text-2xl font-bold">
-                            {selectedSprite.label}
-                          </h3>
-                          <p className="mt-1 text-sm text-black/55">
-                            This idle GIF will be the default pet shown in your dashboard.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        {selectedPetType.sprites.map((sprite) => {
-                          const active = sprite.key === petSprite;
-
-                          return (
-                            <button
-                              key={sprite.key}
-                              type="button"
-                              onClick={() => setPetSprite(sprite.key)}
-                              className={`rounded-[1.25rem] border bg-[#f5f0e8] p-3 text-left transition-all ${
-                                active
-                                  ? 'border-black shadow-[4px_4px_0px_rgba(0,0,0,1)]'
-                                  : 'border-black/10 hover:border-black/40'
-                              }`}
-                            >
-                              <div className="flex items-center justify-center rounded-xl bg-white">
-                                <PetSprite
-                                  alt={sprite.label}
-                                  src={sprite.idle}
-                                  maxWidth={128}
-                                  maxHeight={96}
-                                />
-                              </div>
-                              <div className="mt-3">
-                                <p className="font-heading text-sm font-bold">
-                                  {sprite.label}
-                                </p>
-                                <p className="mt-1 text-xs text-black/50">
-                                  Idle + walk GIFs available
-                                </p>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
+                    <div className="rounded-[1.75rem] border border-black/10 bg-white p-4">
+                      <span className="mb-4 block text-xs font-bold uppercase tracking-[0.2em] text-black/45">
+                        Visual Representation
+                      </span>
+                      <PetCustomizer onChange={setCustomizerData} />
                     </div>
                   </div>
                 ) : null}
