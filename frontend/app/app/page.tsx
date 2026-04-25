@@ -274,7 +274,7 @@ function SettingsModal({
 
         <div className="border-t border-black/10 px-6 py-4">
           <button
-            onClick={onLogout}
+            onClick={handleLogout}
             className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-black py-3 text-sm font-semibold transition-colors hover:bg-black hover:text-white"
           >
             <LogOut className="h-4 w-4" />
@@ -555,46 +555,46 @@ function CreatePetModal({
                   </label>
                 </div>
 
-          <div className="flex flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-black/10 bg-[#f5f0e8] p-6">
-                    <PetSprite
-                      alt={customSpriteFile ? "Custom Sprite" : selectedSprite.label}
-                      src={customSpritePreview || selectedSprite.idle}
-                      maxWidth={160}
-                      maxHeight={160}
-                    />
-                    <div className="mt-4 flex flex-col items-center gap-2">
-                      <p className="font-heading text-lg font-bold">
-                        {customSpriteFile ? "Custom Sprite" : selectedSprite.label}
-                      </p>
+                <div className="flex flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-black/10 bg-[#f5f0e8] p-6">
+                  <PetSprite
+                    alt={customSpriteFile ? "Custom Sprite" : selectedSprite.label}
+                    src={customSpritePreview || selectedSprite.idle}
+                    maxWidth={160}
+                    maxHeight={160}
+                  />
+                  <div className="mt-4 flex flex-col items-center gap-2">
+                    <p className="font-heading text-lg font-bold">
+                      {customSpriteFile ? "Custom Sprite" : selectedSprite.label}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => spriteFileInputRef.current?.click()}
+                      className="flex items-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-all hover:bg-black hover:text-white"
+                    >
+                      <Plus className="h-3 w-3" />
+                      {customSpriteFile ? "Change Custom Sprite" : "Upload Own Sprite (PNG/GIF)"}
+                    </button>
+                    {customSpriteFile && (
                       <button
                         type="button"
-                        onClick={() => spriteFileInputRef.current?.click()}
-                        className="flex items-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-all hover:bg-black hover:text-white"
+                        onClick={() => setCustomSpriteFile(null)}
+                        className="text-[10px] font-bold text-red-500 uppercase tracking-wider"
                       >
-                        <Plus className="h-3 w-3" />
-                        {customSpriteFile ? "Change Custom Sprite" : "Upload Own Sprite (PNG/GIF)"}
+                        Remove Custom Sprite
                       </button>
-                      {customSpriteFile && (
-                        <button
-                          type="button"
-                          onClick={() => setCustomSpriteFile(null)}
-                          className="text-[10px] font-bold text-red-500 uppercase tracking-wider"
-                        >
-                          Remove Custom Sprite
-                        </button>
-                      )}
-                      <input 
-                        type="file" 
-                        ref={spriteFileInputRef} 
-                        className="hidden" 
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) setCustomSpriteFile(file);
-                        }}
-                      />
-                    </div>
+                    )}
+                    <input 
+                      type="file" 
+                      ref={spriteFileInputRef} 
+                      className="hidden" 
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) setCustomSpriteFile(file);
+                      }}
+                    />
                   </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -1093,7 +1093,7 @@ function MemoryCardsModal({
                         </button>
                         <button
                           onClick={() => {
-                            const url = `${window.location.origin}/share-memory/${card.id}`; // Optional: implement separate share page
+                            const url = `${window.location.origin}/share-memory/${card.id}`;
                             navigator.clipboard.writeText(url);
                             alert('Memory card link copied!');
                           }}
@@ -1118,11 +1118,9 @@ function MemoryCardsModal({
 function PetPlayground({ 
   pet, 
   onAction,
-  onViewStats
 }: { 
   pet: PetRecord;
   onAction?: (action: string, message: string) => void;
-  onViewStats?: () => void;
 }) {
   const petType = getPetTypeByKey(pet.typeKey) ?? defaultPetType;
   const sprite = getSpriteByKeys(pet.typeKey, pet.spriteKey) ?? petType.sprites[0];
@@ -1224,8 +1222,21 @@ function ChatPanel({
   const chunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const petType = getPetTypeByKey(pet.typeKey) ?? defaultPetType;
 
+  useEffect(() => {
+    if (selectedFile) {
+      const url = URL.createObjectURL(selectedFile);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [selectedFile]);
 
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
 
   const startRecording = async () => {
     try {
@@ -1261,26 +1272,10 @@ function ChatPanel({
       setIsRecording(false);
     }
   };
-  const petType = getPetTypeByKey(pet.typeKey) ?? defaultPetType;
-
-  useEffect(() => {
-    if (selectedFile) {
-      const url = URL.createObjectURL(selectedFile);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setPreviewUrl(null);
-    }
-  }, [selectedFile]);
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
 
   const handleSend = () => {
     const trimmed = input.trim();
     if (!trimmed && !selectedFile) {
-      // If nothing entered, we still send an empty message to trigger pet thought
       onSendMessage(undefined, undefined, replyTo?.id || undefined);
     } else {
       onSendMessage(trimmed || undefined, selectedFile || undefined, replyTo?.id || undefined);
@@ -1334,7 +1329,6 @@ function ChatPanel({
                         : 'rounded-tl-sm border border-black/10 bg-black/5 text-black font-medium'
                     }`}
                   >
-                    {/* Reply Button */}
                     <button
                       onClick={() => setReplyTo(message)}
                       className={`absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg bg-white border border-black/10 shadow-sm hover:bg-black/5 z-20 ${
@@ -1364,7 +1358,6 @@ function ChatPanel({
                             alt="Attachment" 
                             className="max-h-80 w-full rounded-lg object-contain bg-black/5" 
                             onError={(e) => {
-                              console.error("Image load failed", message.fileUrl);
                               e.currentTarget.src = 'https://placehold.co/400x300?text=Image+Load+Error';
                             }}
                           />
@@ -1458,7 +1451,6 @@ function ChatPanel({
       </div>
 
       <div className="border-t-2 border-black pt-4">
-        {/* Replying to indicator */}
         <AnimatePresence>
           {replyTo && (
             <motion.div
@@ -1606,7 +1598,6 @@ function PetSidebar({
   onAddPet,
   isOpen,
   onClose,
-  userEmail,
 }: {
   pets: PetRecord[];
   selectedPetId: number | null;
@@ -1796,65 +1787,39 @@ export default function AppDashboard() {
   useEffect(() => {
     async function getDevices() {
       try {
-        // Request permission briefly to ensure we can see device labels
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach(track => track.stop());
-        
         const devices = await navigator.mediaDevices.enumerateDevices();
         const audioMics = devices.filter(d => d.kind === 'audioinput');
         setMics(audioMics);
-        
-        // Initialize selectedMicId if not already set
         if (audioMics.length > 0 && !selectedMicId) {
           setSelectedMicId(audioMics[0].deviceId);
         }
       } catch (err) {
-        console.warn('Microphone access or enumeration failed:', err);
+        console.warn('Microphone enumeration failed:', err);
       }
     }
     getDevices();
-
     (window as any).openMemoryCards = () => setMemoryCardsOpen(true);
   }, []);
 
-  // Dev Commands & Reliable Triggering
   useEffect(() => {
     (window as any).triggerCheckin = async () => {
-      if (!selectedPetId) return console.error('No pet selected');
-      try {
-        const res = await fetch(`${API_URL}/dev/trigger-checkin`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ petId: selectedPetId })
-        });
-        if (res.ok) {
-          console.log('Check-in triggered successfully. Waiting for poll...');
-          setTimeout(() => (window as any).forcePoll?.(), 1000);
-        } else {
-          console.error('Trigger checkin failed:', await res.text());
-        }
-      } catch (err) {
-        console.error('Trigger checkin failed:', err);
-      }
+      if (!selectedPetId) return;
+      await fetch(`${API_URL}/dev/trigger-checkin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ petId: selectedPetId })
+      });
+      setTimeout(() => (window as any).forcePoll?.(), 1000);
     };
 
     (window as any).triggerMemoryCard = async (force = false) => {
-      if (!selectedPetId) return console.error('No pet selected');
-      try {
-        const res = await fetch(`${API_URL}/dev/trigger-memory-card`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ petId: selectedPetId, force })
-        });
-        if (res.ok) {
-          console.log(`Memory card triggered (force=${force}). Waiting for poll...`);
-          setTimeout(() => (window as any).forcePoll?.(), 1000);
-        } else {
-          console.error('Trigger memory card failed:', await res.text());
-        }
-      } catch (err) {
-        console.error('Trigger memory card failed:', err);
-      }
+      if (!selectedPetId) return;
+      await fetch(`${API_URL}/dev/trigger-memory-card`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ petId: selectedPetId, force })
+      });
+      setTimeout(() => (window as any).forcePoll?.(), 1000);
     };
   }, [selectedPetId]);
 
@@ -1878,7 +1843,7 @@ export default function AppDashboard() {
           setSelectedPetId(payload.user.pets[0].id);
         }
       });
-  }, [router, selectedPetId]);
+  }, [router]);
 
   useEffect(() => {
     if (!selectedPet) return;
@@ -1896,7 +1861,6 @@ export default function AppDashboard() {
     return () => { cancelled = true; };
   }, [selectedPet]);
 
-  // Polling for check-ins / new messages
   const lastMessagesCount = useRef(messages.length);
   useEffect(() => {
     lastMessagesCount.current = messages.length;
@@ -1907,7 +1871,7 @@ export default function AppDashboard() {
     
     const interval = setInterval(async () => {
       await poll();
-    }, 5000); // Poll every 5 seconds for snappier feel
+    }, 5000);
 
     const poll = async () => {
       try {
@@ -1915,14 +1879,10 @@ export default function AppDashboard() {
         const data = await res.json();
         
         if (data.chats && data.chats.length > lastMessagesCount.current) {
-          const newMessagesCount = data.chats.length;
           const newMessages = data.chats.slice(lastMessagesCount.current);
-          
-          // Update local state
           setMessages(data.chats);
-          lastMessagesCount.current = newMessagesCount;
+          lastMessagesCount.current = data.chats.length;
           
-          // Trigger browser notification for new pet messages
           newMessages.forEach(msg => {
             if (msg.role === 'pet' && Notification.permission === 'granted') {
               new (window as any).Notification(`${selectedPet.name}`, {
@@ -1933,7 +1893,6 @@ export default function AppDashboard() {
           });
         }
 
-        // Check for new memory cards
         const cardsRes = await fetch(`${API_URL}/pets/${selectedPet.id}/memory-cards`, { headers: getAuthHeaders() });
         const cardsData = await cardsRes.json();
         if (cardsData.cards && cardsData.cards.length > (window as any).lastMemoryCount) {
@@ -1951,12 +1910,11 @@ export default function AppDashboard() {
     };
 
     (window as any).forcePoll = poll;
-
     return () => {
       clearInterval(interval);
       delete (window as any).forcePoll;
     };
-  }, [selectedPet?.id]); // Only reset if pet changes
+  }, [selectedPet?.id]);
 
   function handleLogout() {
     clearAuthCookie();
@@ -2001,7 +1959,6 @@ export default function AppDashboard() {
   async function handlePetAction(actionName: string, text: string) {
     if (!selectedPet) return;
     
-    // Increment stats in backend
     fetch(`${API_URL}/pets/${selectedPet.id}/stats`, {
       method: 'PATCH',
       headers: {
@@ -2013,7 +1970,6 @@ export default function AppDashboard() {
       if (data.pet) handlePetUpdated(data.pet);
     });
     
-    // Save the pet's action message to the database
     try {
       const res = await fetch(`${API_URL}/pets/${selectedPet.id}/chats`, {
         method: 'POST',
@@ -2021,11 +1977,6 @@ export default function AppDashboard() {
           'Content-Type': 'application/json',
           ...getAuthHeaders(),
         },
-        // We send it as a special "pet" role from the frontend for actions
-        // But the server usually determines the reply. 
-        // Wait, the server's POST /pets/:id/chats adds a USER message and then a PET reply.
-        // I should add a specific endpoint for actions or modify the existing one.
-        // Actually, I'll just use the existing one but I'll add a way to specify it's a pet message.
         body: JSON.stringify({ text, role: 'pet' }),
       });
 
@@ -2034,9 +1985,6 @@ export default function AppDashboard() {
         setMessages(prev => [...prev, ...data.messages]);
       }
     } catch (err) {
-      console.error(err);
-      
-      // Fallback to local state if backend fails
       const petMessage: ChatRecord = {
         id: `action-${Date.now()}`,
         petId: selectedPet.id,
@@ -2050,7 +1998,6 @@ export default function AppDashboard() {
 
   async function handleSendMessage(text?: string, file?: File, replyToId?: string) {
     if (!selectedPet) return;
-    
     setIsTyping(true);
     
     if (text || file) {
@@ -2064,7 +2011,6 @@ export default function AppDashboard() {
         replyToId,
         timestamp: new Date().toISOString()
       };
-      
       setMessages(prev => [...prev, userMessage]);
     }
 
@@ -2076,22 +2022,18 @@ export default function AppDashboard() {
 
       const response = await fetch(`${API_URL}/pets/${selectedPet.id}/chats/stream`, {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-        },
+        headers: { ...getAuthHeaders() },
         body: formData,
       });
 
       if (!response.ok) throw new Error('Failed to send message');
-
       const reader = response.body?.getReader();
-      if (!reader) throw new Error('No reader available');
+      if (!reader) throw new Error('No reader');
 
       const decoder = new TextDecoder();
       let petReplyText = '';
       const replyId = `reply-${Date.now()}`;
       
-      // Add a placeholder message for the streaming reply
       setMessages(prev => [
         ...prev,
         {
@@ -2106,10 +2048,8 @@ export default function AppDashboard() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n');
-
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6).trim();
@@ -2125,9 +2065,7 @@ export default function AppDashboard() {
                   m.id === replyId ? { ...m, text: petReplyText } : m
                 ));
               }
-            } catch (e) {
-              // Ignore partial JSON
-            }
+            } catch (e) {}
           }
         }
       }

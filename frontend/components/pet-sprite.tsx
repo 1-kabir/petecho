@@ -1,6 +1,6 @@
 'use client';
 
-
+import { useState } from 'react';
 
 interface PetSpriteProps {
   alt: string;
@@ -17,6 +17,13 @@ export function PetSprite({
   maxHeight,
   className = '',
 }: PetSpriteProps) {
+  const [size, setSize] = useState({ width: 48, height: 48 });
+
+  const scale = Math.max(
+    1,
+    Math.floor(Math.min(maxWidth / size.width, maxHeight / size.height))
+  );
+
   return (
     <div
       className={`flex items-center justify-center ${className}`}
@@ -28,11 +35,18 @@ export function PetSprite({
       <img
         src={src}
         alt={alt}
+        onLoad={(event) => {
+          const image = event.currentTarget;
+          if (image.naturalWidth && image.naturalHeight) {
+            setSize({
+              width: image.naturalWidth,
+              height: image.naturalHeight,
+            });
+          }
+        }}
         style={{
-          width: 'auto',
-          height: 'auto',
-          maxWidth: '100%',
-          maxHeight: '100%',
+          width: size.width * scale,
+          height: size.height * scale,
           imageRendering: 'pixelated',
           objectFit: 'contain',
         }}

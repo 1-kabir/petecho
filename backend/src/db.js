@@ -29,6 +29,7 @@ export const db = new sqlite3.Database(dbPath, (error) => {
 db.serialize(() => {
   db.run('PRAGMA foreign_keys = ON');
 
+  // Users Table
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,13 +42,13 @@ db.serialize(() => {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `, () => {
-    // Migrations for users
     db.run('ALTER TABLE users ADD COLUMN name TEXT', () => {});
     db.run('ALTER TABLE users ADD COLUMN age INTEGER', () => {});
     db.run('ALTER TABLE users ADD COLUMN description TEXT', () => {});
     db.run('ALTER TABLE users ADD COLUMN profile_picture_url TEXT', () => {});
   });
 
+  // Pets Table
   db.run(`
     CREATE TABLE IF NOT EXISTS pets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,11 +69,11 @@ db.serialize(() => {
       guest_play_count INTEGER DEFAULT 0,
       is_real INTEGER DEFAULT 0,
       is_alive INTEGER DEFAULT 1,
+      checkin_times TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )
   `, () => {
-    // Migrate existing pets table if needed
     db.run('ALTER TABLE pets ADD COLUMN description TEXT', () => {});
     db.run('ALTER TABLE pets ADD COLUMN birthday TEXT', () => {});
     db.run('ALTER TABLE pets ADD COLUMN run_count INTEGER DEFAULT 0', () => {});
@@ -80,7 +81,6 @@ db.serialize(() => {
     db.run('ALTER TABLE pets ADD COLUMN play_count INTEGER DEFAULT 0', () => {});
     db.run('ALTER TABLE pets ADD COLUMN custom_sprite_url TEXT', () => {});
     db.run('ALTER TABLE pets ADD COLUMN share_token TEXT', () => {
-      // Generate tokens for existing pets
       db.all('SELECT id FROM pets WHERE share_token IS NULL', (err, rows) => {
         if (rows) {
           rows.forEach(row => {
@@ -98,6 +98,7 @@ db.serialize(() => {
     db.run('ALTER TABLE pets ADD COLUMN checkin_times TEXT', () => {});
   });
 
+  // Chats Table
   db.run(`
     CREATE TABLE IF NOT EXISTS chats (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -114,12 +115,12 @@ db.serialize(() => {
       FOREIGN KEY (reply_to_id) REFERENCES chats(id) ON DELETE SET NULL
     )
   `, () => {
-    // Migrate existing chats table if needed
     db.run('ALTER TABLE chats ADD COLUMN mime_type TEXT', () => {});
     db.run('ALTER TABLE chats ADD COLUMN file_url TEXT', () => {});
     db.run('ALTER TABLE chats ADD COLUMN reply_to_id INTEGER', () => {});
   });
 
+  // Memory Cards Table
   db.run(`
     CREATE TABLE IF NOT EXISTS memory_cards (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -133,13 +134,7 @@ db.serialize(() => {
     )
   `);
 
-  db.run(`
-    CREATE INDEX IF NOT EXISTS idx_pets_user_id
-    ON pets (user_id)
-  `);
-
-  db.run(`
-    CREATE INDEX IF NOT EXISTS idx_chats_pet_created_at
-    ON chats (pet_id, created_at)
-  `);
+  // Indexes
+  db.run(`CREATE INDEX IF NOT EXISTS idx_pets_user_id ON pets (user_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_chats_pet_created_at ON chats (pet_id, created_at)`);
 });
