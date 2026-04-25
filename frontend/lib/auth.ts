@@ -10,14 +10,32 @@ export interface PetRecord {
   gender: string;
   typeKey: string;
   spriteKey: string;
+  customSpriteUrl?: string | null;
+  shareToken: string;
   description: string;
   birthday: string;
+  stats: {
+    run: number;
+    ball: number;
+    play: number;
+  };
+  guestStats: {
+    run: number;
+    ball: number;
+    play: number;
+  };
+  isReal: boolean;
+  isAlive: boolean;
   createdAt: string;
 }
 
 export interface UserRecord {
   id: number;
   email: string;
+  name?: string | null;
+  age?: number | null;
+  description?: string | null;
+  profilePictureUrl?: string | null;
   pets: PetRecord[];
 }
 
@@ -28,6 +46,7 @@ export interface ChatRecord {
   text: string;
   mimeType?: string | null;
   fileUrl?: string | null;
+  replyToId?: string | null;
   timestamp: string;
 }
 

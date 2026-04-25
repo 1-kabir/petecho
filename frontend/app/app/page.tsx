@@ -17,8 +17,6 @@ import {
   Video,
   Camera,
   Film,
-  X,
-  Sparkles,
   Bell,
   BellOff,
   Trash2,
@@ -31,6 +29,10 @@ import {
   Zap,
   CircleDashed,
   Gamepad2,
+  BarChart3,
+  Share2,
+  Reply,
+  Download,
 } from 'lucide-react';
 import { PetSprite } from '@/components/pet-sprite';
 import {
@@ -49,15 +51,60 @@ import { getRandomPetActionMessage, type PetActionType } from '@/lib/pet-actions
 const defaultPetType = petCatalog.petTypes[0];
 
 function SettingsModal({
+  user,
+  onUserUpdate,
   onClose,
   onLogout,
   onDeleteAccount,
+  mics,
+  selectedMicId,
+  onMicChange,
 }: {
+  user: UserRecord | null;
+  onUserUpdate: (user: UserRecord) => void;
   onClose: () => void;
   onLogout: () => void;
   onDeleteAccount: () => void;
+  mics: MediaDeviceInfo[];
+  selectedMicId: string | null;
+  onMicChange: (id: string) => void;
 }) {
   const [notifications, setNotifications] = useState(true);
+  const [userName, setUserName] = useState(user?.name || '');
+  const [userAge, setUserAge] = useState(user?.age?.toString() || '');
+  const [userDesc, setUserDesc] = useState(user?.description || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleSaveProfile() {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append('name', userName);
+      formData.append('age', userAge);
+      formData.append('description', userDesc);
+      
+      const file = fileInputRef.current?.files?.[0];
+      if (file) {
+        formData.append('profilePicture', file);
+      }
+
+      const res = await fetch(`${API_URL}/auth/me`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('Failed to update profile');
+      const data = await res.json();
+      onUserUpdate(data.user);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   const toggle = (setter: (value: boolean) => void, current: boolean) =>
     setter(!current);
@@ -98,6 +145,70 @@ function SettingsModal({
         <div className="flex-1 space-y-8 overflow-y-auto p-6">
           <section>
             <h3 className="mb-4 font-heading text-xs font-bold uppercase tracking-widest text-black/40">
+              My Profile
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div 
+                  className="relative h-16 w-16 shrink-0 cursor-pointer overflow-hidden rounded-2xl border-2 border-black bg-[#f5f0e8] transition-transform hover:scale-105 active:scale-95"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {user?.profilePictureUrl ? (
+                    <img 
+                      src={`${API_URL}/files/${user.profilePictureUrl.split(/[/\\]/).pop()}`} 
+                      className="h-full w-full object-cover" 
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center font-heading text-xl font-bold">
+                      {getUserInitial(user?.email || '')}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity hover:opacity-100">
+                    <Camera className="h-5 w-5 text-white" />
+                  </div>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={handleSaveProfile}
+                  />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <input
+                    type="text"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    placeholder="Your Name"
+                    className="w-full bg-transparent font-heading font-bold outline-none border-b-2 border-transparent focus:border-black/10"
+                  />
+                  <input
+                    type="number"
+                    value={userAge}
+                    onChange={(e) => setUserAge(e.target.value)}
+                    placeholder="Age"
+                    className="w-full bg-transparent text-xs text-black/40 outline-none"
+                  />
+                </div>
+              </div>
+              <textarea
+                value={userDesc}
+                onChange={(e) => setUserDesc(e.target.value)}
+                placeholder="Tell your pets about yourself..."
+                className="w-full h-24 resize-none rounded-xl border border-black/10 bg-black/5 p-3 text-xs outline-none transition-colors focus:border-black/20 font-body"
+              />
+              <button
+                onClick={handleSaveProfile}
+                disabled={isSaving}
+                className="w-full rounded-xl bg-black py-2.5 text-[10px] font-bold uppercase tracking-widest text-white transition-all hover:bg-black/80 active:scale-95 disabled:opacity-50"
+              >
+                {isSaving ? 'Saving...' : 'Update Profile'}
+              </button>
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-4 font-heading text-xs font-bold uppercase tracking-widest text-black/40">
               Preferences
             </h3>
             <div className="space-y-3">
@@ -109,6 +220,32 @@ function SettingsModal({
                 onToggle={() => toggle(setNotifications, notifications)}
                 id="toggle-notifications"
               />
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-4 font-heading text-xs font-bold uppercase tracking-widest text-black/40">
+              Audio Input
+            </h3>
+            <div className="space-y-4">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Mic className="h-4 w-4 text-black/40" />
+                  <label className="text-xs font-bold text-black/60 uppercase tracking-wider">Microphone</label>
+                </div>
+                <select 
+                  value={selectedMicId || ''} 
+                  onChange={(e) => onMicChange(e.target.value)}
+                  className="w-full rounded-xl border border-black/10 bg-black/5 px-4 py-3 text-sm outline-none transition-colors focus:border-black/20 font-body"
+                >
+                  {mics.length === 0 && <option value="">No microphones found</option>}
+                  {mics.map((mic) => (
+                    <option key={mic.deviceId} value={mic.deviceId}>
+                      {mic.label || `Microphone ${mic.deviceId.slice(0, 5)}...`}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </section>
 
@@ -205,6 +342,21 @@ function CreatePetModal({
   const [birthday, setBirthday] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isReal, setIsReal] = useState(false);
+  const [isAlive, setIsAlive] = useState(true);
+  const [customSpriteFile, setCustomSpriteFile] = useState<File | null>(null);
+  const [customSpritePreview, setCustomSpritePreview] = useState<string | null>(null);
+  const spriteFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (customSpriteFile) {
+      const url = URL.createObjectURL(customSpriteFile);
+      setCustomSpritePreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setCustomSpritePreview(null);
+    }
+  }, [customSpriteFile]);
 
   const selectedPetType = useMemo(
     () => getPetTypeByKey(typeKey) ?? defaultPetType,
@@ -226,13 +378,23 @@ function CreatePetModal({
     setError('');
 
     try {
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('gender', gender);
+      formData.append('typeKey', typeKey);
+      formData.append('spriteKey', spriteKey);
+      formData.append('description', description);
+      formData.append('birthday', birthday);
+      formData.append('isReal', isReal ? 'true' : 'false');
+      formData.append('isAlive', isAlive ? 'true' : 'false');
+      if (customSpriteFile) {
+        formData.append('sprite', customSpriteFile);
+      }
+
       const res = await fetch(`${API_URL}/pets`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify({ name, gender, typeKey, spriteKey, description, birthday }),
+        headers: getAuthHeaders(),
+        body: formData,
       });
 
       const data = await res.json();
@@ -281,6 +443,42 @@ function CreatePetModal({
 
           <form className="max-h-[70vh] overflow-y-auto p-6" onSubmit={handleSubmit}>
             <div className="space-y-6">
+              <div className="space-y-4 rounded-3xl border-2 border-black/5 bg-black/[0.02] p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold">Real-life Pet?</p>
+                    <p className="text-[10px] text-black/40 font-body uppercase tracking-wider">Is this pet based on a real companion?</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsReal(!isReal)}
+                    className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${isReal ? 'bg-black' : 'bg-black/10'}`}
+                  >
+                    <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${isReal ? 'left-6' : 'left-1'}`} />
+                  </button>
+                </div>
+                
+                {isReal && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    className="border-t-2 border-black/5 pt-4 flex items-center justify-between"
+                  >
+                    <div>
+                      <p className="text-sm font-bold">Memorial Pet?</p>
+                      <p className="text-[10px] text-black/40 font-body uppercase tracking-wider">Is this pet a tribute to a companion who has passed?</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsAlive(!isAlive)}
+                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${!isAlive ? 'bg-rose-500' : 'bg-black/10'}`}
+                    >
+                      <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${!isAlive ? 'left-6' : 'left-1'}`} />
+                    </button>
+                  </motion.div>
+                )}
+              </div>
+
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-4">
                   <label className="block">
@@ -357,17 +555,46 @@ function CreatePetModal({
                   </label>
                 </div>
 
-                <div className="flex flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-black/10 bg-[#f5f0e8] p-6">
-                  <PetSprite
-                    alt={selectedSprite.label}
-                    src={selectedSprite.idle}
-                    maxWidth={160}
-                    maxHeight={160}
-                  />
-                  <p className="mt-4 text-center font-heading text-lg font-bold">
-                    {selectedSprite.label}
-                  </p>
-                </div>
+          <div className="flex flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-black/10 bg-[#f5f0e8] p-6">
+                    <PetSprite
+                      alt={customSpriteFile ? "Custom Sprite" : selectedSprite.label}
+                      src={customSpritePreview || selectedSprite.idle}
+                      maxWidth={160}
+                      maxHeight={160}
+                    />
+                    <div className="mt-4 flex flex-col items-center gap-2">
+                      <p className="font-heading text-lg font-bold">
+                        {customSpriteFile ? "Custom Sprite" : selectedSprite.label}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => spriteFileInputRef.current?.click()}
+                        className="flex items-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-all hover:bg-black hover:text-white"
+                      >
+                        <Plus className="h-3 w-3" />
+                        {customSpriteFile ? "Change Custom Sprite" : "Upload Own Sprite (PNG/GIF)"}
+                      </button>
+                      {customSpriteFile && (
+                        <button
+                          type="button"
+                          onClick={() => setCustomSpriteFile(null)}
+                          className="text-[10px] font-bold text-red-500 uppercase tracking-wider"
+                        >
+                          Remove Custom Sprite
+                        </button>
+                      )}
+                      <input 
+                        type="file" 
+                        ref={spriteFileInputRef} 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setCustomSpriteFile(file);
+                        }}
+                      />
+                    </div>
+                  </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -415,21 +642,128 @@ function CreatePetModal({
   );
 }
 
+function StatsModal({
+  pet,
+  onClose,
+}: {
+  pet: PetRecord;
+  onClose: () => void;
+}) {
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="w-full max-w-md overflow-hidden rounded-[2.5rem] border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between border-b-2 border-black bg-[#f5f0e8] px-8 py-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white">
+                <BarChart3 className="h-5 w-5" />
+              </div>
+              <h2 className="font-heading text-xl font-bold">{pet.name}'s Stats</h2>
+            </div>
+            <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 transition-colors hover:bg-black hover:text-white">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="p-8 space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              <StatCard icon={Zap} label="Times Run" value={pet.stats.run} guestValue={pet.guestStats?.run} color="bg-amber-100 text-amber-600" />
+              <StatCard icon={CircleDashed} label="Balls Given" value={pet.stats.ball} guestValue={pet.guestStats?.ball} color="bg-blue-100 text-blue-600" />
+              <StatCard icon={Gamepad2} label="Times Played" value={pet.stats.play} guestValue={pet.guestStats?.play} color="bg-rose-100 text-rose-600" />
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+function StatCard({ icon: Icon, label, value, guestValue, color }: { icon: any, label: string, value: number, guestValue?: number, color: string }) {
+  return (
+    <div className={`flex items-center justify-between rounded-2xl border-2 border-black/5 p-5 ${color.split(' ')[0]}`}>
+      <div className="flex items-center gap-4">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
+          <Icon className={`h-6 w-6 ${color.split(' ')[1]}`} />
+        </div>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">{label}</p>
+          <div className="flex items-baseline gap-2">
+            <p className="font-heading text-2xl font-bold">{value}</p>
+            {guestValue !== undefined && (
+              <p className="text-[10px] font-bold opacity-40">+{guestValue} by guests</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EditPetModal({
   pet,
   onClose,
   onUpdated,
+  onDeleted,
 }: {
   pet: PetRecord;
   onClose: () => void;
   onUpdated: (pet: PetRecord) => void;
+  onDeleted: (petId: number) => void;
 }) {
   const [name, setName] = useState(pet.name);
   const [gender, setGender] = useState(pet.gender);
   const [description, setDescription] = useState(pet.description || '');
   const [birthday, setBirthday] = useState(pet.birthday || '');
+  const [isReal, setIsReal] = useState(pet.isReal);
+  const [isAlive, setIsAlive] = useState(pet.isAlive);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [customSpriteFile, setCustomSpriteFile] = useState<File | null>(null);
+  const [customSpritePreview, setCustomSpritePreview] = useState<string | null>(null);
+  const spriteFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (customSpriteFile) {
+      const url = URL.createObjectURL(customSpriteFile);
+      setCustomSpritePreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setCustomSpritePreview(null);
+    }
+  }, [customSpriteFile]);
+
+  async function handleDelete() {
+    if (!confirm(`Are you sure you want to delete ${pet.name}? This action cannot be undone.`)) return;
+    
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/pets/${pet.id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      
+      if (!res.ok) throw new Error('Failed to delete pet.');
+      
+      onDeleted(pet.id);
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -437,13 +771,21 @@ function EditPetModal({
     setError('');
 
     try {
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('gender', gender);
+      formData.append('description', description);
+      formData.append('birthday', birthday);
+      formData.append('isReal', isReal ? 'true' : 'false');
+      formData.append('isAlive', isAlive ? 'true' : 'false');
+      if (customSpriteFile) {
+        formData.append('sprite', customSpriteFile);
+      }
+
       const res = await fetch(`${API_URL}/pets/${pet.id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify({ name, gender, description, birthday }),
+        headers: getAuthHeaders(),
+        body: formData,
       });
 
       const data = await res.json();
@@ -482,7 +824,7 @@ function EditPetModal({
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white">
                 <Sparkles className="h-5 w-5" />
               </div>
-              <h2 className="font-heading text-xl font-bold">Edit Profile</h2>
+              <h2 className="font-heading text-xl font-bold">Edit</h2>
             </div>
             <button
               onClick={onClose}
@@ -493,6 +835,42 @@ function EditPetModal({
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6 p-8">
+            <div className="space-y-4 rounded-3xl border-2 border-black/5 bg-black/[0.02] p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold">Real-life Pet?</p>
+                  <p className="text-[10px] text-black/40 font-body uppercase tracking-wider">Is this pet based on a real companion?</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsReal(!isReal)}
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${isReal ? 'bg-black' : 'bg-black/10'}`}
+                >
+                  <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${isReal ? 'left-6' : 'left-1'}`} />
+                </button>
+              </div>
+              
+              {isReal && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  className="border-t-2 border-black/5 pt-4 flex items-center justify-between"
+                >
+                  <div>
+                    <p className="text-sm font-bold">Memorial Pet?</p>
+                    <p className="text-[10px] text-black/40 font-body uppercase tracking-wider">Is this pet a tribute to a companion who has passed?</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsAlive(!isAlive)}
+                    className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${!isAlive ? 'bg-rose-500' : 'bg-black/10'}`}
+                  >
+                    <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${!isAlive ? 'left-6' : 'left-1'}`} />
+                  </button>
+                </motion.div>
+              )}
+            </div>
+
             {error && (
               <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
                 {error}
@@ -545,13 +923,54 @@ function EditPetModal({
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-black py-4 font-heading text-sm font-bold uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-            >
-              {loading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : 'Save Changes'}
-            </button>
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-black/40">Pet Sprite</label>
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-black/5 bg-black/[0.02] p-4">
+                <PetSprite 
+                  alt="Pet Preview" 
+                  src={customSpritePreview || (pet.customSpriteUrl ? `${API_URL}/files/${pet.customSpriteUrl.split(/[/\\]/).pop()}` : getSpriteByKeys(pet.typeKey, pet.spriteKey)?.idle || '')} 
+                  maxWidth={100} 
+                  maxHeight={100} 
+                />
+                <button
+                  type="button"
+                  onClick={() => spriteFileInputRef.current?.click()}
+                  className="flex items-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-all hover:bg-black hover:text-white"
+                >
+                  <Plus className="h-3 w-3" />
+                  Change Pet Sprite (PNG/GIF)
+                </button>
+                <input 
+                  type="file" 
+                  ref={spriteFileInputRef} 
+                  className="hidden" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setCustomSpriteFile(file);
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-black py-4 font-heading text-sm font-bold uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+              >
+                {loading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : 'Save Changes'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-red-500/20 py-4 font-heading text-sm font-bold uppercase tracking-widest text-red-500 transition-all hover:bg-red-50 disabled:opacity-50"
+              >
+                {loading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : 'Delete Pet'}
+              </button>
+            </div>
           </form>
         </motion.div>
       </motion.div>
@@ -574,12 +993,136 @@ function ActionButton({ icon: Icon, label, onClick, color, id }: { icon: any, la
   );
 }
 
+function MemoryCardsModal({
+  pet,
+  onClose,
+}: {
+  pet: PetRecord;
+  onClose: () => void;
+}) {
+  const [cards, setCards] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_URL}/pets/${pet.id}/memory-cards`, { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(data => {
+        setCards(data.cards || []);
+        setLoading(false);
+        (window as any).lastMemoryCount = data.cards?.length || 0;
+      })
+      .catch(() => setLoading(false));
+  }, [pet.id]);
+
+  const handleDownload = async (imageUrl: string) => {
+    const response = await fetch(`${API_URL}/files/${imageUrl.split(/[/\\]/).pop()}`);
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `memory_${pet.name}_${Date.now()}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="w-full max-w-4xl overflow-hidden rounded-[2rem] border-2 border-black bg-white shadow-[12px_12px_0px_rgba(0,0,0,1)]"
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between border-b-2 border-black px-6 py-5">
+            <div className="flex items-center gap-2">
+              <Film className="h-5 w-5" />
+              <span className="font-heading text-lg font-bold">Memory Cards</span>
+            </div>
+            <button onClick={onClose} className="rounded-full border border-black/10 p-2 hover:bg-black hover:text-white">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="max-h-[70vh] overflow-y-auto p-6">
+            {loading ? (
+              <div className="flex h-40 items-center justify-center">
+                <LoaderCircle className="h-8 w-8 animate-spin text-black/20" />
+              </div>
+            ) : cards.length === 0 ? (
+              <div className="py-20 text-center">
+                <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-black/5">
+                  <Film className="h-8 w-8 text-black/20" />
+                </div>
+                <h3 className="font-heading text-xl font-bold">No memories yet</h3>
+                <p className="mt-2 text-black/40">Exchange 3 or more images in a week to create a memory card!</p>
+              </div>
+            ) : (
+              <div className="grid gap-6 sm:grid-cols-2">
+                {cards.map((card) => (
+                  <motion.div
+                    key={card.id}
+                    className="group relative overflow-hidden rounded-2xl border-2 border-black bg-[#f5f0e8] p-2 transition-transform hover:-translate-y-1"
+                    whileHover={{ scale: 1.02 }}
+                  >
+                    <img
+                      src={`${API_URL}/files/${card.image_url.split(/[/\\]/).pop()}`}
+                      alt={card.title}
+                      className="aspect-[3/2] w-full rounded-xl object-cover"
+                    />
+                    <div className="mt-3 flex items-center justify-between px-2 pb-1">
+                      <div>
+                        <p className="font-heading text-sm font-bold">{card.title}</p>
+                        <p className="text-[10px] text-black/40 uppercase tracking-widest font-body">Weekly Highlights</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleDownload(card.image_url)}
+                          className="rounded-lg border border-black/10 bg-white p-2 hover:bg-black hover:text-white transition-colors"
+                          title="Download"
+                        >
+                          <Download className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            const url = `${window.location.origin}/share-memory/${card.id}`; // Optional: implement separate share page
+                            navigator.clipboard.writeText(url);
+                            alert('Memory card link copied!');
+                          }}
+                          className="rounded-lg border border-black/10 bg-white p-2 hover:bg-black hover:text-white transition-colors"
+                          title="Share"
+                        >
+                          <Share2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 function PetPlayground({ 
   pet, 
-  onAction 
+  onAction,
+  onViewStats
 }: { 
   pet: PetRecord;
   onAction?: (action: string, message: string) => void;
+  onViewStats?: () => void;
 }) {
   const petType = getPetTypeByKey(pet.typeKey) ?? defaultPetType;
   const sprite = getSpriteByKeys(pet.typeKey, pet.spriteKey) ?? petType.sprites[0];
@@ -587,6 +1130,9 @@ function PetPlayground({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const getSpriteSrc = () => {
+    if (pet.customSpriteUrl) {
+      return `${API_URL}/files/${pet.customSpriteUrl.split(/[/\\]/).pop()}`;
+    }
     if (action === 'run') return sprite.run || sprite.idle.replace('_idle_', '_run_');
     if (action === 'swipe') return sprite.swipe || sprite.idle.replace('_idle_', '_swipe_');
     if (action === 'withBall') return sprite.withBall || sprite.idle.replace('_idle_', '_with_ball_');
@@ -654,21 +1200,67 @@ const messageTimeFormatter = new Intl.DateTimeFormat('en-US', {
   hour12: true,
 });
 
+function ChatPanel({
   pet, 
   messages,
   onSendMessage,
-  isTyping 
+  isTyping,
+  selectedMicId,
+  user,
 }: { 
   pet: PetRecord; 
   messages: ChatRecord[];
-  onSendMessage: (text?: string, file?: File) => void;
+  onSendMessage: (text?: string, file?: File, replyToId?: string) => void;
   isTyping?: boolean;
+  selectedMicId: string | null;
+  user: UserRecord | null;
 }) {
   const [input, setInput] = useState('');
+  const [replyTo, setReplyTo] = useState<ChatRecord | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+
+
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: selectedMicId ? { deviceId: { exact: selectedMicId } } : true 
+      });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const file = new File([blob], 'recording.webm', { type: 'audio/webm' });
+        onSendMessage(undefined, file, replyTo?.id || undefined);
+        setReplyTo(null);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Error starting recording:', err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
   const petType = getPetTypeByKey(pet.typeKey) ?? defaultPetType;
 
   useEffect(() => {
@@ -689,12 +1281,13 @@ const messageTimeFormatter = new Intl.DateTimeFormat('en-US', {
     const trimmed = input.trim();
     if (!trimmed && !selectedFile) {
       // If nothing entered, we still send an empty message to trigger pet thought
-      onSendMessage();
+      onSendMessage(undefined, undefined, replyTo?.id || undefined);
     } else {
-      onSendMessage(trimmed || undefined, selectedFile || undefined);
+      onSendMessage(trimmed || undefined, selectedFile || undefined, replyTo?.id || undefined);
     }
     setInput('');
     setSelectedFile(null);
+    setReplyTo(null);
   };
 
   return (
@@ -735,43 +1328,88 @@ const messageTimeFormatter = new Intl.DateTimeFormat('en-US', {
 
                 <div className={`max-w-[85%] space-y-1 sm:max-w-[75%] ${message.role === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
                   <div
-                    className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed font-body ${
+                    className={`relative group rounded-2xl px-4 py-2.5 text-sm leading-relaxed font-body transition-all hover:shadow-sm ${
                       message.role === 'user'
                         ? 'rounded-tr-sm bg-black text-white'
                         : 'rounded-tl-sm border border-black/10 bg-black/5 text-black font-medium'
                     }`}
                   >
+                    {/* Reply Button */}
+                    <button
+                      onClick={() => setReplyTo(message)}
+                      className={`absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg bg-white border border-black/10 shadow-sm hover:bg-black/5 z-20 ${
+                        message.role === 'user' ? '-left-10' : '-right-10'
+                      }`}
+                      title="Reply"
+                    >
+                      <Reply className="h-3.5 w-3.5 text-black" />
+                    </button>
+
+                    {message.replyToId && (
+                      <div className={`mb-2 rounded-lg border-l-4 p-2 text-[10px] ${
+                        message.role === 'user' ? 'bg-white/10 border-white/40' : 'bg-black/5 border-black/20'
+                      }`}>
+                        <p className="font-bold opacity-60">Replying to:</p>
+                        <p className="truncate italic">
+                          {messages.find(m => m.id === message.replyToId)?.text || 'Original message'}
+                        </p>
+                      </div>
+                    )}
+
                     {message.fileUrl && (
-                      <div className="mb-2 overflow-hidden rounded-lg bg-black/5">
+                      <div className={`mb-2 overflow-hidden rounded-xl border border-black/5 bg-white/50 backdrop-blur-sm p-1 shadow-sm`}>
                         {message.mimeType?.startsWith('image/') ? (
                           <img 
-                            src={`${API_URL}/files/${message.fileUrl.split(/[/\\]/).pop()}`} 
+                            src={message.fileUrl.startsWith('blob:') ? message.fileUrl : `${API_URL}/files/${message.fileUrl.split(/[/\\]/).pop()}`} 
                             alt="Attachment" 
-                            className="max-h-60 w-full object-contain" 
+                            className="max-h-80 w-full rounded-lg object-contain bg-black/5" 
+                            onError={(e) => {
+                              console.error("Image load failed", message.fileUrl);
+                              e.currentTarget.src = 'https://placehold.co/400x300?text=Image+Load+Error';
+                            }}
                           />
                         ) : message.mimeType?.startsWith('video/') ? (
                           <video 
-                            src={`${API_URL}/files/${message.fileUrl.split(/[/\\]/).pop()}`} 
+                            src={message.fileUrl.startsWith('blob:') ? message.fileUrl : `${API_URL}/files/${message.fileUrl.split(/[/\\]/).pop()}`} 
                             controls 
-                            className="max-h-60 w-full" 
+                            className="max-h-80 w-full rounded-lg bg-black/5" 
                           />
+                        ) : message.mimeType?.startsWith('audio/') ? (
+                          <div className="flex flex-col gap-2 p-3 min-w-[240px]">
+                            <div className="flex items-center gap-2 text-black/60">
+                              <Mic className="h-4 w-4" />
+                              <span className="text-[10px] font-bold uppercase tracking-wider">Voice Message</span>
+                            </div>
+                            <audio 
+                              src={message.fileUrl.startsWith('blob:') ? message.fileUrl : `${API_URL}/files/${message.fileUrl.split(/[/\\]/).pop()}`} 
+                              controls 
+                              className="w-full h-8" 
+                            />
+                          </div>
                         ) : (
-                          <div className="flex items-center gap-2 p-3 bg-white/10">
-                            <FileText className="h-5 w-5" />
-                            <span className="truncate text-xs">{message.fileUrl.split(/[/\\]/).pop()}</span>
+                          <div className="flex items-center gap-3 p-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-black text-white">
+                              <FileText className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-bold">{message.fileUrl.split(/[/\\]/).pop()}</p>
+                              <p className="text-[10px] text-black/40 uppercase tracking-widest font-body">File Attachment</p>
+                            </div>
                           </div>
                         )}
                       </div>
                     )}
-                    <div className={`prose prose-sm max-w-none ${
-                      message.role === 'user' 
-                        ? 'prose-invert prose-p:text-white prose-headings:text-white' 
-                        : 'prose-p:text-black prose-headings:text-black'
-                    }`}>
-                      <ReactMarkdown>
-                        {message.text}
-                      </ReactMarkdown>
-                    </div>
+                    {message.text && message.text !== '[File Attachment]' && (
+                      <div className={`prose prose-sm max-w-none ${
+                        message.role === 'user' 
+                          ? 'prose-invert prose-p:text-white prose-headings:text-white' 
+                          : 'prose-p:text-black prose-headings:text-black'
+                      }`}>
+                        <ReactMarkdown>
+                          {message.text}
+                        </ReactMarkdown>
+                      </div>
+                    )}
                   </div>
                   
                   {isLastOfGroup && (
@@ -782,8 +1420,16 @@ const messageTimeFormatter = new Intl.DateTimeFormat('en-US', {
                 </div>
 
                 {message.role === 'user' && (
-                  <div className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-black/10 bg-black/10 transition-opacity ${isSameSenderAsPrevious ? 'opacity-0' : 'opacity-100'}`}>
-                    <Smile className="h-3.5 w-3.5 text-black/60" />
+                  <div className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-black/10 bg-black/10 transition-opacity ${isSameSenderAsPrevious ? 'opacity-0' : 'opacity-100'}`}>
+                    {user?.profilePictureUrl ? (
+                      <img 
+                        src={`${API_URL}/files/${user.profilePictureUrl.split(/[/\\]/).pop()}`} 
+                        alt="You" 
+                        className="h-full w-full object-cover" 
+                      />
+                    ) : (
+                      <Smile className="h-3.5 w-3.5 text-black/60" />
+                    )}
                   </div>
                 )}
               </motion.div>
@@ -812,6 +1458,31 @@ const messageTimeFormatter = new Intl.DateTimeFormat('en-US', {
       </div>
 
       <div className="border-t-2 border-black pt-4">
+        {/* Replying to indicator */}
+        <AnimatePresence>
+          {replyTo && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="mb-2 flex items-center justify-between rounded-xl border-2 border-black/5 bg-black/[0.02] px-4 py-2"
+            >
+              <div className="flex items-center gap-2 overflow-hidden">
+                <Reply className="h-3 w-3 text-black/40" />
+                <p className="truncate text-[10px] font-bold text-black/60">
+                  Replying to: <span className="font-normal italic">{replyTo.text || '[Attachment]'}</span>
+                </p>
+              </div>
+              <button 
+                onClick={() => setReplyTo(null)}
+                className="rounded-full p-1 hover:bg-black/5"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {selectedFile && (
           <div className="mb-2 flex items-center gap-3 rounded-xl border border-black/10 bg-black/5 p-2">
             {previewUrl && selectedFile.type.startsWith('image/') ? (
@@ -866,6 +1537,17 @@ const messageTimeFormatter = new Intl.DateTimeFormat('en-US', {
             >
               <Film className="h-4 w-4" />
             </button>
+            <button
+              onClick={isRecording ? stopRecording : startRecording}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                isRecording 
+                  ? 'bg-red-500 text-white animate-pulse' 
+                  : 'text-black/40 hover:bg-black/5 hover:text-black'
+              }`}
+              title={isRecording ? "Stop Recording" : "Record Audio"}
+            >
+              <Mic className="h-4 w-4" />
+            </button>
             <input 
               type="file" 
               ref={fileInputRef} 
@@ -876,6 +1558,20 @@ const messageTimeFormatter = new Intl.DateTimeFormat('en-US', {
               }}
             />
           </div>
+          {isRecording && (
+            <div className="flex items-center gap-3 px-3 py-2 bg-red-50 text-red-600 rounded-xl mx-1 mb-1">
+              <div className="flex gap-1">
+                <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse" />
+              </div>
+              <span className="text-xs font-bold uppercase tracking-wider">Recording Audio...</span>
+              <button 
+                onClick={stopRecording}
+                className="ml-auto text-red-400 hover:text-red-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <input
               type="text"
@@ -1002,14 +1698,16 @@ function DashboardHeader({
   onSettingsOpen,
   onSidebarToggle,
   onEditOpen,
+  onStatsOpen,
   userInitial,
-  petName,
+  pet,
 }: {
   onSettingsOpen: () => void;
   onSidebarToggle: () => void;
   onEditOpen: () => void;
+  onStatsOpen: () => void;
   userInitial: string;
-  petName: string;
+  pet: PetRecord | null;
 }) {
   return (
     <header className="flex items-center justify-between border-b-2 border-black bg-white px-4 py-4 sm:px-6">
@@ -1023,16 +1721,45 @@ function DashboardHeader({
         <div>
           <span className="font-heading text-lg font-bold tracking-tight">Petecho</span>
           <p className="text-[10px] uppercase tracking-widest text-black/45 font-body sm:text-xs">
-            {petName}&apos;s room
+            {pet ? `${pet.name}'s room` : 'No pet selected'}
           </p>
         </div>
-        <button
-          onClick={onEditOpen}
-          className="ml-4 hidden items-center gap-2 rounded-lg border border-black/10 bg-black/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all hover:border-black/20 hover:bg-black/10 sm:flex"
-        >
-          <Sparkles className="h-3 w-3" />
-          Edit Profile
-        </button>
+        {pet && (
+          <div className="ml-4 hidden items-center gap-2 sm:flex">
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/share/${pet.shareToken}`;
+                navigator.clipboard.writeText(url);
+                alert('Share link copied to clipboard!');
+              }}
+              className="flex items-center gap-2 rounded-lg border border-black/10 bg-black/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all hover:border-black/20 hover:bg-black/10"
+            >
+              <Share2 className="h-3 w-3" />
+              Share
+            </button>
+            <button
+              onClick={onStatsOpen}
+              className="flex items-center gap-2 rounded-lg border border-black/10 bg-black/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all hover:border-black/20 hover:bg-black/10"
+            >
+              <BarChart3 className="h-3 w-3" />
+              Stats
+            </button>
+            <button
+              onClick={onEditOpen}
+              className="flex items-center gap-2 rounded-lg border border-black/10 bg-black/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all hover:border-black/20 hover:bg-black/10"
+            >
+              <Sparkles className="h-3 w-3" />
+              Edit
+            </button>
+            <button
+              onClick={() => (window as any).openMemoryCards?.()}
+              className="flex items-center gap-2 rounded-lg border border-black/10 bg-black/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all hover:border-black/20 hover:bg-black/10"
+            >
+              <Film className="h-3 w-3" />
+              Memories
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
@@ -1061,6 +1788,75 @@ export default function AppDashboard() {
   const [selectedPetId, setSelectedPetId] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatRecord[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [memoryCardsOpen, setMemoryCardsOpen] = useState(false);
+  const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
+  const [selectedMicId, setSelectedMicId] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function getDevices() {
+      try {
+        // Request permission briefly to ensure we can see device labels
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop());
+        
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioMics = devices.filter(d => d.kind === 'audioinput');
+        setMics(audioMics);
+        
+        // Initialize selectedMicId if not already set
+        if (audioMics.length > 0 && !selectedMicId) {
+          setSelectedMicId(audioMics[0].deviceId);
+        }
+      } catch (err) {
+        console.warn('Microphone access or enumeration failed:', err);
+      }
+    }
+    getDevices();
+
+    (window as any).openMemoryCards = () => setMemoryCardsOpen(true);
+  }, []);
+
+  // Dev Commands & Reliable Triggering
+  useEffect(() => {
+    (window as any).triggerCheckin = async () => {
+      if (!selectedPetId) return console.error('No pet selected');
+      try {
+        const res = await fetch(`${API_URL}/dev/trigger-checkin`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ petId: selectedPetId })
+        });
+        if (res.ok) {
+          console.log('Check-in triggered successfully. Waiting for poll...');
+          setTimeout(() => (window as any).forcePoll?.(), 1000);
+        } else {
+          console.error('Trigger checkin failed:', await res.text());
+        }
+      } catch (err) {
+        console.error('Trigger checkin failed:', err);
+      }
+    };
+
+    (window as any).triggerMemoryCard = async (force = false) => {
+      if (!selectedPetId) return console.error('No pet selected');
+      try {
+        const res = await fetch(`${API_URL}/dev/trigger-memory-card`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ petId: selectedPetId, force })
+        });
+        if (res.ok) {
+          console.log(`Memory card triggered (force=${force}). Waiting for poll...`);
+          setTimeout(() => (window as any).forcePoll?.(), 1000);
+        } else {
+          console.error('Trigger memory card failed:', await res.text());
+        }
+      } catch (err) {
+        console.error('Trigger memory card failed:', err);
+      }
+    };
+  }, [selectedPetId]);
 
   const pets = user?.pets || [];
   const selectedPet = useMemo(() => 
@@ -1100,6 +1896,68 @@ export default function AppDashboard() {
     return () => { cancelled = true; };
   }, [selectedPet]);
 
+  // Polling for check-ins / new messages
+  const lastMessagesCount = useRef(messages.length);
+  useEffect(() => {
+    lastMessagesCount.current = messages.length;
+  }, [messages]);
+
+  useEffect(() => {
+    if (!selectedPet) return;
+    
+    const interval = setInterval(async () => {
+      await poll();
+    }, 5000); // Poll every 5 seconds for snappier feel
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`${API_URL}/pets/${selectedPet.id}/chats`, { headers: getAuthHeaders() });
+        const data = await res.json();
+        
+        if (data.chats && data.chats.length > lastMessagesCount.current) {
+          const newMessagesCount = data.chats.length;
+          const newMessages = data.chats.slice(lastMessagesCount.current);
+          
+          // Update local state
+          setMessages(data.chats);
+          lastMessagesCount.current = newMessagesCount;
+          
+          // Trigger browser notification for new pet messages
+          newMessages.forEach(msg => {
+            if (msg.role === 'pet' && Notification.permission === 'granted') {
+              new (window as any).Notification(`${selectedPet.name}`, {
+                body: msg.text,
+                icon: '/favicon.ico'
+              });
+            }
+          });
+        }
+
+        // Check for new memory cards
+        const cardsRes = await fetch(`${API_URL}/pets/${selectedPet.id}/memory-cards`, { headers: getAuthHeaders() });
+        const cardsData = await cardsRes.json();
+        if (cardsData.cards && cardsData.cards.length > (window as any).lastMemoryCount) {
+          if (Notification.permission === 'granted') {
+            new (window as any).Notification(`${selectedPet.name}`, {
+              body: "A new weekly memory card is ready for you!",
+              icon: '/favicon.ico'
+            });
+          }
+          (window as any).lastMemoryCount = cardsData.cards.length;
+        }
+      } catch (e) {
+        console.error('Polling failed:', e);
+      }
+    };
+
+    (window as any).forcePoll = poll;
+
+    return () => {
+      clearInterval(interval);
+      delete (window as any).forcePoll;
+    };
+  }, [selectedPet?.id]); // Only reset if pet changes
+
   function handleLogout() {
     clearAuthCookie();
     router.replace('/');
@@ -1130,8 +1988,30 @@ export default function AppDashboard() {
     } : null));
   }
 
+  function handlePetDeleted(petId: number) {
+    setUser((prev) => prev ? {
+      ...prev,
+      pets: prev.pets.filter(p => p.id !== petId)
+    } : null);
+    if (selectedPetId === petId) {
+      setSelectedPetId(null);
+    }
+  }
+
   async function handlePetAction(actionName: string, text: string) {
     if (!selectedPet) return;
+    
+    // Increment stats in backend
+    fetch(`${API_URL}/pets/${selectedPet.id}/stats`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ action: actionName }),
+    }).then(res => res.json()).then(data => {
+      if (data.pet) handlePetUpdated(data.pet);
+    });
     
     // Save the pet's action message to the database
     try {
@@ -1168,26 +2048,31 @@ export default function AppDashboard() {
     }
   }
 
-  async function handleSendMessage(text?: string, file?: File) {
+  async function handleSendMessage(text?: string, file?: File, replyToId?: string) {
     if (!selectedPet) return;
     
     setIsTyping(true);
     
-    const userMessage: ChatRecord = {
-      id: `temp-${Date.now()}`,
-      petId: selectedPet.id,
-      role: 'user',
-      text: text || (file ? '[File Attachment]' : ''),
-      mimeType: file?.type,
-      timestamp: new Date().toISOString()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
+    if (text || file) {
+      const userMessage: ChatRecord = {
+        id: `temp-${Date.now()}`,
+        petId: selectedPet.id,
+        role: 'user',
+        text: text || (file ? '[File Attachment]' : ''),
+        mimeType: file?.type,
+        fileUrl: file ? URL.createObjectURL(file) : null,
+        replyToId,
+        timestamp: new Date().toISOString()
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+    }
 
     try {
       const formData = new FormData();
       if (text) formData.append('text', text);
       if (file) formData.append('file', file);
+      if (replyToId) formData.append('replyToId', replyToId);
 
       const response = await fetch(`${API_URL}/pets/${selectedPet.id}/chats/stream`, {
         method: 'POST',
@@ -1269,8 +2154,9 @@ export default function AppDashboard() {
           onSettingsOpen={() => setSettingsOpen(true)}
           onSidebarToggle={() => setSidebarOpen(true)}
           onEditOpen={() => setEditModalOpen(true)}
+          onStatsOpen={() => setStatsOpen(true)}
           userInitial={getUserInitial(user?.email || '')}
-          petName={selectedPet?.name || 'Your Pet'}
+          pet={selectedPet}
         />
 
         <main className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
@@ -1289,6 +2175,8 @@ export default function AppDashboard() {
                   messages={messages} 
                   onSendMessage={handleSendMessage}
                   isTyping={isTyping}
+                  selectedMicId={selectedMicId}
+                  user={user}
                 />
               </section>
             </>
@@ -1317,9 +2205,14 @@ export default function AppDashboard() {
 
       {settingsOpen && (
         <SettingsModal
+          user={user}
+          onUserUpdate={setUser}
           onClose={() => setSettingsOpen(false)}
           onLogout={handleLogout}
           onDeleteAccount={handleDeleteAccount}
+          mics={mics}
+          selectedMicId={selectedMicId}
+          onMicChange={setSelectedMicId}
         />
       )}
 
@@ -1335,6 +2228,21 @@ export default function AppDashboard() {
           pet={selectedPet}
           onClose={() => setEditModalOpen(false)}
           onUpdated={handlePetUpdated}
+          onDeleted={handlePetDeleted}
+        />
+      )}
+
+      {statsOpen && selectedPet && (
+        <StatsModal
+          pet={selectedPet}
+          onClose={() => setStatsOpen(false)}
+        />
+      )}
+
+      {memoryCardsOpen && selectedPet && (
+        <MemoryCardsModal
+          pet={selectedPet}
+          onClose={() => setMemoryCardsOpen(false)}
         />
       )}
     </div>
