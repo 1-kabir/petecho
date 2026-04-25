@@ -6,15 +6,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Zap, CircleDashed, Gamepad2, PawPrint, Heart } from 'lucide-react';
 import { PetSprite } from '@/components/pet-sprite';
 import { type PetRecord } from '@/lib/auth';
-import petCatalog from '@/public/art/catalog.json';
+import { getPetTypeByKey, getSpriteByKeys } from '@/lib/pet-catalog';
+import { type PetSpriteOption } from '@/lib/pet-catalog';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-const getPetTypeByKey = (key: string) => petCatalog.petTypes.find((t) => t.key === key);
-const getSpriteByKeys = (typeKey: string, spriteKey: string) => {
-  const type = getPetTypeByKey(typeKey);
-  return type?.sprites.find((s) => s.key === spriteKey);
-};
 
 export default function SharePage() {
   const { token } = useParams();
@@ -25,9 +20,9 @@ export default function SharePage() {
   const [dialogue, setDialogue] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const sprite = useMemo(() => {
+  const sprite = useMemo<PetSpriteOption | null>(() => {
     if (!pet) return null;
-    return getSpriteByKeys(pet.typeKey, pet.spriteKey) || getPetTypeByKey(pet.typeKey)?.sprites[0];
+    return getSpriteByKeys(pet.typeKey, pet.spriteKey) || getPetTypeByKey(pet.typeKey)?.sprites[0] || null;
   }, [pet]);
 
   useEffect(() => {

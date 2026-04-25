@@ -274,7 +274,7 @@ function SettingsModal({
 
         <div className="border-t border-black/10 px-6 py-4">
           <button
-            onClick={handleLogout}
+            onClick={onLogout}
             className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-black py-3 text-sm font-semibold transition-colors hover:bg-black hover:text-white"
           >
             <LogOut className="h-4 w-4" />
@@ -1879,7 +1879,7 @@ export default function AppDashboard() {
         const data = await res.json();
         
         if (data.chats && data.chats.length > lastMessagesCount.current) {
-          const newMessages = data.chats.slice(lastMessagesCount.current);
+          const newMessages: ChatRecord[] = data.chats.slice(lastMessagesCount.current);
           setMessages(data.chats);
           lastMessagesCount.current = data.chats.length;
           
