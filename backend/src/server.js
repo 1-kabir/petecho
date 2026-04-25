@@ -597,6 +597,8 @@ app.post('/pets/:petId/chats/stream', authFromHeader, upload.single('file'), asy
     const modelId = "gemini-3.1-flash-lite-preview";
     const systemInstruction = `You are a pet named ${pet.name}. You are a ${pet.typeKey} and your gender is ${pet.gender}. ${pet.description || ''}. Your birthday is ${pet.birthday || 'unknown'}. 
     
+    Current Date/Time: ${new Date().toLocaleString()}
+
 CONSTRAINTS:
 1. Keep your responses very short (max 2 sentences).
 2. Act exactly like a digital companion pet.

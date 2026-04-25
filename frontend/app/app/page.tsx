@@ -415,6 +415,150 @@ function CreatePetModal({
   );
 }
 
+function EditPetModal({
+  pet,
+  onClose,
+  onUpdated,
+}: {
+  pet: PetRecord;
+  onClose: () => void;
+  onUpdated: (pet: PetRecord) => void;
+}) {
+  const [name, setName] = useState(pet.name);
+  const [gender, setGender] = useState(pet.gender);
+  const [description, setDescription] = useState(pet.description || '');
+  const [birthday, setBirthday] = useState(pet.birthday || '');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch(`${API_URL}/pets/${pet.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ name, gender, description, birthday }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update pet.');
+      }
+
+      onUpdated(data.pet);
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="relative w-full max-w-md overflow-hidden rounded-[2.5rem] border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between border-b-2 border-black bg-[#f5f0e8] px-8 py-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <h2 className="font-heading text-xl font-bold">Edit Profile</h2>
+            </div>
+            <button
+              onClick={onClose}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 transition-colors hover:bg-black hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6 p-8">
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-black/40">Name</label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full rounded-xl border border-black/10 bg-black/5 px-4 py-3 outline-none transition-colors focus:border-black/20"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-black/40">Birthday</label>
+                <input
+                  type="date"
+                  value={birthday}
+                  onChange={(e) => setBirthday(e.target.value)}
+                  className="w-full rounded-xl border border-black/10 bg-black/5 px-4 py-3 outline-none transition-colors focus:border-black/20"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-black/40">Gender</label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="w-full rounded-xl border border-black/10 bg-black/5 px-4 py-3 outline-none transition-colors focus:border-black/20"
+                >
+                  <option value="male">Boy</option>
+                  <option value="female">Girl</option>
+                  <option value="unknown">Unknown</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-black/40">Description</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe your pet's personality..."
+                rows={3}
+                className="w-full resize-none rounded-xl border border-black/10 bg-black/5 px-4 py-3 outline-none transition-colors focus:border-black/20 font-body text-sm"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-black py-4 font-heading text-sm font-bold uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+            >
+              {loading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : 'Save Changes'}
+            </button>
+          </form>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 function ActionButton({ icon: Icon, label, onClick, color, id }: { icon: any, label: string, onClick: () => void, color: string, id: string }) {
   return (
     <button
@@ -857,6 +1001,7 @@ function PetSidebar({
 function DashboardHeader({
   onSettingsOpen,
   onSidebarToggle,
+  onEditOpen,
   userInitial,
   petName,
 }: {
@@ -1108,7 +1253,7 @@ export default function AppDashboard() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-y-auto bg-white text-black lg:flex-row lg:overflow-hidden">
+    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-white text-black lg:flex-row">
       <PetSidebar
         pets={pets}
         selectedPetId={selectedPetId}
